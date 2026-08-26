@@ -1,4 +1,4 @@
-PitchGrader — MLB Stuff+
+Stuff+ Model
 
 ## Running it
 
