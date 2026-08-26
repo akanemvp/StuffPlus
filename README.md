@@ -11,7 +11,6 @@ python main.py profiles   # aggregate scored pitches into cards + leaderboards (
 python main.py live       # start the live in-season update loop
 
 ./start.sh                # run the Flask web app locally on http://localhost:5001
-gunicorn app:app          # serve the web app (see Procfile for the Railway command)
 ```
 
 ## Layout
