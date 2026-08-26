@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stuff+ Model</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0d1117;
+      --surface: #161b22;
+      --border:  #30363d;
+      --text:    #e6edf3;
+      --muted:   #8b949e;
+      --accent:  #58a6ff;
+    }
+
+    body {
+      background: var(--bg);
+      background-image: url('/static/bg.jpg');
+      background-size: cover;
+      background-position: center top;
+      background-attachment: fixed;
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      min-height: 100vh;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: rgba(13, 17, 23, 0.5);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Season dropdown — top right ── */
+    .top-bar {
+      position: fixed;
+      top: 14px;
+      right: 20px;
+      z-index: 10;
+    }
+
+    .season-select {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+    }
+
+    /* ── Hero search ── */
+    main {
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 16px;
+    }
+
+    .hero-title {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 32px;
+      letter-spacing: -0.5px;
+    }
+
+    .search-wrap {
+      position: relative;
+      width: 100%;
+      max-width: 520px;
+    }
+    .search-wrap input {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 14px 18px;
+      border-radius: 10px;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .search-wrap input:focus { border-color: var(--accent); }
+
+    #results-dropdown {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0; right: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      max-height: 360px;
+      overflow-y: auto;
+      z-index: 100;
+      display: none;
+    }
+    .result-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 11px 16px;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.1s;
+    }
+    .result-row:last-child { border-bottom: none; }
+    .result-row:hover { background: var(--border); }
+    .result-name { font-weight: 600; font-size: 0.9rem; }
+    .result-meta { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+    .result-sp   { font-weight: 700; font-size: 1rem; }
+
+    /* ── Bottom credit ── */
+    .hero-credit {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.78rem;
+      color: var(--muted);
+      z-index: 10;
+    }
+    .hero-credit a {
+      color: var(--muted);
+      text-decoration: none;
+    }
+    .hero-credit a:hover { color: var(--accent); }
+
+    @media (max-width: 600px) {
+      .hero-title { font-size: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="top-bar">
+  <select class="season-select" id="season-sel">
+    <option value="aaa2026">2026 Triple-A (Live)</option>
+    <option value="acl2026">2026 ACL (Live)</option>
+    <option value="fsl2026">2026 FSL Low-A (Live)</option>
+    <option value="futures2026">2026 Futures (Live)</option>
+    <option value="college2026">2026 College</option>
+    <option value="breakout2026">2026 Breakout</option>
+    <option value="spring2026">2026 Spring</option>
+    <option value="springall2026">2026 Spring + Breakout</option>
+    <option value="2026">2026 (Live)</option>
+  </select>
+</div>
+
+<main>
+  <div class="hero">
+    <div class="hero-title">Find a Pitcher</div>
+
+    <div class="search-wrap">
+      <input id="search-input" type="text" placeholder="Search players…" autocomplete="off" spellcheck="false" />
+      <div id="results-dropdown"></div>
+    </div>
+  </div>
+</main>
+
+
+<script>
+  const GRADE_COLORS = {
+    "80":"#00b4d8","70":"#00b4d8",
+    "65":"#4cc9f0","60":"#4cc9f0",
+    "55":"#7bf1a8","50":"#f8f9fa",
+    "45":"#f8f9fa","40":"#f4a261",
+    "35":"#f4a261","30":"#ef233c",
+  };
+
+  const seasonSel = document.getElementById("season-sel");
+
+  // Restore last-used season so navigating back preserves the selection
+  const savedSeason = localStorage.getItem("stuffplus_season");
+  if (savedSeason && seasonSel.querySelector(`option[value="${savedSeason}"]`)) {
+    seasonSel.value = savedSeason;
+  }
+
+  let season = seasonSel.value;
+  let allPitchers = [];
+
+  seasonSel.addEventListener("change", e => {
+    season = e.target.value;
+    localStorage.setItem("stuffplus_season", season);
+    loadLeaderboard();
+  });
+
+  async function loadLeaderboard() {
+    try {
+      const res = await fetch(`/api/leaderboard/${season}`);
+      if (!res.ok) { allPitchers = []; return; }
+      allPitchers = await res.json();
+    } catch {}
+  }
+
+  // ── Search ──────────────────────────────────────────────────────────────
+  const input    = document.getElementById("search-input");
+  const dropdown = document.getElementById("results-dropdown");
+
+  let searchTimer;
+  input.addEventListener("input", () => {
+    clearTimeout(searchTimer);
+    const q = input.value.trim().toLowerCase();
+    if (!q) { dropdown.style.display = "none"; return; }
+
+    searchTimer = setTimeout(async () => {
+      function nameMatches(playerName, query) {
+        const stored = playerName.toLowerCase();
+        const parts  = stored.split(', ');
+        const firstLast = parts.length === 2 ? `${parts[1]} ${parts[0]}` : stored;
+        return stored.includes(query) || firstLast.includes(query);
+      }
+      let results = allPitchers.filter(p => nameMatches(p.player_name, q)).slice(0, 12);
+
+      if (!results.length) {
+        try {
+          const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&season=${season}`);
+          results = await res.json();
+        } catch {}
+      }
+
+      if (!results.length) { dropdown.style.display = "none"; return; }
+
+      dropdown.innerHTML = results.map(r => {
+        const c = GRADE_COLORS[r.grade] || "#f8f9fa";
+        const parts = r.player_name.split(', ');
+        const displayName = parts.length === 2 ? `${parts[1]} ${parts[0]}` : r.player_name;
+        return `<div class="result-row" onclick="goPlayer('${encodeURIComponent(r.player_name)}','${season}')">
+          <div class="result-name">${displayName}</div>
+        </div>`;
+      }).join("");
+      dropdown.style.display = "block";
+    }, 150);
+  });
+
+  document.addEventListener("click", e => {
+    if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+      dropdown.style.display = "none";
+    }
+  });
+
+  function goPlayer(name, s) {
+    window.location.href = `/player/${name}/${s}`;
+  }
+
+  loadLeaderboard();
+</script>
+</body>
+</html>

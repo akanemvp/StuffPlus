@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pitch Editor – Stuff+</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0d1117;
+      --surface:  #161b22;
+      --surface2: #1c2333;
+      --border:   #21262d;
+      --border2:  #30363d;
+      --text:     #e6edf3;
+      --muted:    #768390;
+      --muted2:   #4a5568;
+      --blue:     #4a90d9;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px;
+      -webkit-font-smoothing: antialiased;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    header {
+      background: #0a0e14;
+      border-bottom: 1px solid #1a2030;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-shrink: 0;
+    }
+    .hdr-back { color: var(--muted); text-decoration: none; font-size: 11px; font-weight: 600; transition: color .15s; }
+    .hdr-back:hover { color: var(--text); }
+    .hdr-title { font-size: 16px; font-weight: 700; }
+    .hdr-sub { font-size: 11px; color: var(--muted); margin-left: 4px; }
+    .hdr-badge {
+      margin-left: auto;
+      background: #1a2d1a; border: 1px solid #2a4a2a; color: #5cb85c;
+      font-size: 9px; font-weight: 700; letter-spacing: 1px;
+      padding: 2px 8px; border-radius: 3px; text-transform: uppercase;
+    }
+
+    main {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ── Left: scatter ───────────────────────────────────────────────────── */
+    .scatter-pane {
+      flex: 0 0 auto;
+      width: 480px;
+      display: flex;
+      flex-direction: column;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 12px;
+      gap: 8px;
+      overflow-y: auto;
+    }
+    .scatter-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .section-label {
+      font-size: 9px; font-weight: 700; letter-spacing: 1.2px;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .hint-text {
+      font-size: 10px; color: var(--muted2);
+    }
+    .btn-ghost {
+      background: none; border: 1px solid var(--border2);
+      color: var(--muted); font-size: 10px; font-weight: 600;
+      padding: 3px 9px; border-radius: 4px; cursor: pointer;
+      font-family: inherit; transition: border-color .15s, color .15s;
+      white-space: nowrap;
+    }
+    .btn-ghost:hover { border-color: var(--muted); color: var(--text); }
+
+    .scatter-wrap {
+      width: 100%;
+      aspect-ratio: 1;
+      position: relative;
+      flex-shrink: 0;
+    }
+    #editor-svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+      touch-action: none;
+    }
+    .scatter-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px 12px;
+      flex-shrink: 0;
+    }
+    .legend-item {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 10px; color: var(--muted);
+    }
+    .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+    /* ── Right: editor panel ─────────────────────────────────────────────── */
+    .editor-pane {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Selection bar — visible when pitches are selected */
+    #sel-bar {
+      display: none;
+      flex-shrink: 0;
+      background: #0e1e2e;
+      border-bottom: 1px solid #1d3550;
+      padding: 10px 16px;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .sel-count {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .sel-types {
+      font-size: 11px;
+      color: #7bb8f0;
+      flex: 1;
+    }
+    .sel-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .remap-select {
+      background: var(--surface2); border: 1px solid var(--border2);
+      color: var(--text); font-size: 12px; font-weight: 700;
+      padding: 5px 10px; border-radius: 4px; cursor: pointer;
+      outline: none; font-family: inherit; min-width: 75px;
+      transition: border-color .15s;
+    }
+    .remap-select:focus { border-color: var(--blue); }
+    .remap-select option { background: #1c2333; }
+    .btn-apply {
+      background: #1a3a5c; border: 1px solid #2a5080;
+      color: #7bb8f0; font-size: 11px; font-weight: 700;
+      letter-spacing: 0.5px; padding: 6px 16px; border-radius: 4px;
+      cursor: pointer; font-family: inherit; text-transform: uppercase;
+      transition: background .15s;
+      white-space: nowrap;
+    }
+    .btn-apply:hover { background: #1e4870; }
+    .btn-apply:disabled { opacity: .35; cursor: default; }
+
+    /* Selection metrics table */
+    #sel-metrics {
+      display: none;
+      flex-shrink: 0;
+      background: #080e16;
+      border-bottom: 1px solid #1d3550;
+      overflow-x: auto;
+    }
+    #sel-metrics table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10.5px;
+      white-space: nowrap;
+    }
+    #sel-metrics thead th {
+      padding: 5px 8px;
+      color: var(--muted);
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-align: right;
+      border-bottom: 1px solid var(--border);
+      background: #0a1220;
+    }
+    #sel-metrics thead th:first-child { text-align: left; padding-left: 12px; }
+    #sel-metrics tbody td {
+      padding: 4px 8px;
+      text-align: right;
+      color: var(--text);
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    #sel-metrics tbody td:first-child { text-align: left; padding-left: 12px; font-weight: 700; }
+    #sel-metrics tbody tr:last-child td { border-bottom: none; }
+
+    /* Pending + results scrollable area */
+    .scroll-area {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .panel-section-title {
+      font-size: 9px; font-weight: 700; letter-spacing: 1.2px;
+      text-transform: uppercase; color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 6px; margin-bottom: 4px;
+    }
+
+    /* Pending list */
+    .pending-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      font-size: 11px;
+    }
+    .pending-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .pending-label { flex: 1; color: var(--text); }
+    .pending-count { color: var(--muted); font-size: 10px; }
+    .pending-remove {
+      background: none; border: none; color: var(--muted2);
+      cursor: pointer; font-size: 14px; line-height: 1;
+      padding: 0 2px; transition: color .15s;
+    }
+    .pending-remove:hover { color: #d04848; }
+
+    /* Empty state */
+    .empty-state {
+      font-size: 11px;
+      color: var(--muted2);
+      line-height: 1.6;
+    }
+
+    /* Action bar */
+    .action-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .btn-calc {
+      background: #1a3a5c; border: 1px solid #2a5080;
+      color: #7bb8f0; font-size: 11px; font-weight: 700;
+      letter-spacing: 0.8px; padding: 8px 18px; border-radius: 5px;
+      cursor: pointer; font-family: inherit; text-transform: uppercase;
+      transition: background .15s;
+    }
+    .btn-calc:hover { background: #1e4870; }
+    .btn-calc:disabled { opacity: .35; cursor: default; }
+    .btn-clear-all {
+      background: none; border: 1px solid var(--border2);
+      color: var(--muted); font-size: 10px; font-weight: 600;
+      padding: 7px 14px; border-radius: 4px; cursor: pointer;
+      font-family: inherit; transition: border-color .15s, color .15s;
+    }
+    .btn-clear-all:hover { border-color: #d04848; color: #d04848; }
+    .spinner { font-size: 11px; color: var(--muted); }
+
+    /* Results */
+    .results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(155px,1fr)); gap: 8px; }
+    .result-card {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 6px; padding: 10px 12px;
+    }
+    .result-top { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+    .result-pt { font-size: 12px; font-weight: 700; }
+    .result-n { font-size: 10px; color: var(--muted); margin-left: auto; }
+    .result-badge {
+      font-size: 9px; font-weight: 700; letter-spacing: 0.5px;
+      padding: 1px 5px; border-radius: 3px; background:#1a2d1a; color:#5cb85c;
+    }
+    .result-row { display: flex; justify-content: space-between; font-size: 11px; }
+    .result-lbl { color: var(--muted); }
+    .result-val { font-weight: 700; }
+    .delta { font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 3px; margin-left: 5px; }
+    .delta-pos { background:#1a2d1a; color:#5cb85c; }
+    .delta-neg { background:#2d1a1a; color:#d04848; }
+    .delta-neu { color: var(--muted); }
+
+    #error-msg {
+      display: none; color: #d04848; font-size: 11px;
+      padding: 8px 12px; background: #2d1a1a;
+      border: 1px solid #4a2020; border-radius: 4px;
+    }
+
+    @media (max-width: 600px) {
+      body { height: auto; overflow: auto; }
+
+      main { flex-direction: column; overflow: visible; height: auto; }
+
+      .scatter-pane {
+        width: 100% !important;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .editor-pane { overflow: visible; min-height: 0; }
+
+      .scroll-area { overflow: visible; flex: none; }
+
+      #sel-metrics { overflow-x: auto; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a class="hdr-back" id="back-link" href="#">← Back to Profile</a>
+  <div>
+    <span class="hdr-title" id="hdr-name">Loading…</span>
+    <span class="hdr-sub" id="hdr-season"></span>
+  </div>
+  <div class="hdr-badge">Pitch Editor</div>
+</header>
+
+<main>
+  <!-- ── Left: movement scatter ──────────────────────────────────────────── -->
+  <div class="scatter-pane">
+    <div class="scatter-toolbar">
+      <span class="section-label">Movement Profile</span>
+      <span class="hint-text" id="sel-hint">Drag to select pitches</span>
+      <button class="btn-ghost" id="btn-clear-sel" style="display:none" onclick="clearSelection()">Clear selection</button>
+    </div>
+
+    <div class="scatter-wrap">
+      <svg id="editor-svg" viewBox="0 0 452 452" xmlns="http://www.w3.org/2000/svg">
+        <rect width="452" height="452" fill="#0d1117" rx="6"/>
+        <g id="grid-layer"></g>
+        <g id="dots-layer"></g>
+        <g id="label-layer"></g>
+        <!-- Selection rectangle (hidden by default) -->
+        <rect id="sel-rect" x="0" y="0" width="0" height="0"
+          fill="rgba(74,144,217,0.08)" stroke="#4a90d9"
+          stroke-width="1.2" stroke-dasharray="5,3"
+          style="display:none;pointer-events:none"/>
+      </svg>
+    </div>
+
+    <div class="scatter-legend" id="scatter-legend"></div>
+  </div>
+
+  <!-- ── Right: editor panel ─────────────────────────────────────────────── -->
+  <div class="editor-pane">
+
+    <!-- Selection action bar -->
+    <div id="sel-bar">
+      <span class="sel-count" id="sel-count">0 pitches selected</span>
+      <span class="sel-types" id="sel-types"></span>
+      <span class="sel-label">Reclassify as</span>
+      <select class="remap-select" id="reclassify-to">
+        <!-- filled by JS -->
+      </select>
+      <button class="btn-apply" id="btn-apply" onclick="applyReclassify()">Apply</button>
+    </div>
+
+    <!-- Per-type metrics for selected pitches -->
+    <div id="sel-metrics"></div>
+
+    <!-- Scrollable content -->
+    <div class="scroll-area">
+
+      <!-- Pending changes -->
+      <div>
+        <div class="panel-section-title">Pending Changes</div>
+        <div id="pending-list">
+          <div class="empty-state" id="pending-empty">
+            Draw on the chart to select pitches, then apply a new pitch type.
+          </div>
+        </div>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="action-bar">
+        <button class="btn-calc" id="calc-btn" onclick="recalculate()" disabled>
+          Recalculate Stuff+
+        </button>
+        <button class="btn-calc" id="save-btn" onclick="saveChanges()" disabled
+          style="background:#1f7a4d" title="Save these corrections so they persist">
+          Save Changes
+        </button>
+        <button class="btn-clear-all" id="btn-revert" onclick="revertSaved()"
+          title="Delete every saved correction for this pitcher and restore the original labels">
+          Revert saved
+        </button>
+        <button class="btn-clear-all" id="btn-clear-all" onclick="clearAll()" style="display:none">
+          Clear all changes
+        </button>
+        <span class="spinner" id="spinner" style="display:none">Calculating…</span>
+        <span id="save-msg" style="display:none;font-size:12px;font-weight:600;color:#1f7a4d;margin-left:8px"></span>
+      </div>
+
+      <div id="error-msg"></div>
+
+      <!-- Results (shown after recalculate) -->
+      <div id="results-section" style="display:none">
+        <div class="panel-section-title">Results</div>
+        <div class="results-grid" id="results-grid"></div>
+        <button class="btn-calc" id="preview-btn" onclick="viewInProfile()"
+          style="margin-top:10px;background:#2a5caa;width:100%">View in Profile</button>
+      </div>
+
+    </div><!-- /scroll-area -->
+  </div><!-- /editor-pane -->
+</main>
+
+<script>
+// ─── Config ──────────────────────────────────────────────────────────────────
+const playerName = {{ player_name | tojson }};
+const season     = {{ season | tojson }};
+const gamePk     = {{ game_pk | tojson }};  // null for season view, integer for game-scoped editor
+
+function toDisplay(n) {
+  if (n.includes(",")) {
+    const [last, first] = n.split(",").map(s => s.trim());
+    return `${first} ${last}`;
+  }
+  return n;
+}
+const displayName = toDisplay(playerName);
+
+document.getElementById("hdr-name").textContent = displayName;
+document.getElementById("hdr-season").textContent = gamePk ? `${season} · Game ${gamePk}` : season;
+document.getElementById("back-link").href = `/player/${encodeURIComponent(playerName)}/${season}`;
+document.title = `${displayName} – Pitch Editor${gamePk ? ` (Game ${gamePk})` : ""}`;
+
+// ─── Pitch colours ────────────────────────────────────────────────────────────
+const PITCH_COLORS = {
+  FF:"#e05252",FA:"#e05252",SI:"#c0603a",FC:"#e8a838",
+  SL:"#7bf1a8",ST:"#5de0b0",SV:"#4fccc0",
+  CU:"#60a0e0",KC:"#8060d8",CS:"#5080c0",
+  CH:"#50c860",FO:"#38b870",FS:"#70c050",SC:"#40b060",
+  KN:"#d0b050",EP:"#a0a0a0",
+};
+function pitchColor(pt) { return PITCH_COLORS[pt] || "#8b949e"; }
+const ALL_TYPES = ["FF","FA","SI","FC","SL","ST","SV","CU","KC","CS","CH","FO","FS","SC","KN","EP"];
+
+// ─── State ───────────────────────────────────────────────────────────────────
+let rawPitches    = [];        // [{hb, ivb, pt, sp, gk, ab, pn}]
+let isLHP         = false;
+let selectedIdxs  = new Set(); // indices into rawPitches that are currently selected
+let appliedOvr    = {};        // {key: new_pt}  key = "${gk}_${ab}_${pn}"
+let pendingItems  = [];        // [{label, keys, to_type, count, from_types_str}]
+
+// pitchKey for a raw pitch
+const pKey = d => `${d.gk}_${d.ab}_${d.pn}`;
+
+// effective type for a raw pitch (after applied overrides)
+const effType = d => appliedOvr[pKey(d)] || d.pt;
+
+// ─── SVG chart ───────────────────────────────────────────────────────────────
+const W = 452, H = 452, cx = W/2, cy = H/2, SCALE = 9.9;
+const RINGS = [5, 10, 15, 20];
+
+function buildGrid() {
+  const layer = document.getElementById("grid-layer");
+  let h = "";
+  RINGS.forEach(r => {
+    const pr = r * SCALE;
+    h += `<circle cx="${cx}" cy="${cy}" r="${pr}" fill="none" stroke="#1e252e" stroke-width="1.2"/>`;
+    if (r === 5)
+      h += `<text x="${cx+pr+3}" y="${cy-4}" fill="#4a5368" font-size="9" font-weight="700" font-family="'Inter',sans-serif">5"</text>`;
+  });
+  h += `<line x1="${cx}" y1="14" x2="${cx}" y2="${H-14}" stroke="#1e252e" stroke-width="0.8"/>`;
+  h += `<line x1="14" y1="${cy}" x2="${W-14}" y2="${cy}" stroke="#1e252e" stroke-width="0.8"/>`;
+  // Axis labels — set after handedness known
+  h += `<text id="lbl-left"  x="16" y="${cy-6}" text-anchor="start" fill="#3e4a58" font-size="9" font-weight="700" font-family="'Inter',sans-serif"></text>`;
+  h += `<text id="lbl-right" x="${W-16}" y="${cy-6}" text-anchor="end"   fill="#3e4a58" font-size="9" font-weight="700" font-family="'Inter',sans-serif"></text>`;
+  h += `<text x="${cx+4}" y="22" fill="#3e4a58" font-size="9" font-weight="700" font-family="'Inter',sans-serif">rise</text>`;
+  layer.innerHTML = h;
+}
+
+function setHandedness(lhp) {
+  isLHP = lhp;
+  const ll = document.getElementById("lbl-left");
+  const lr = document.getElementById("lbl-right");
+  if (ll) ll.textContent = lhp ? "← arm" : "← glove";
+  if (lr) lr.textContent = lhp ? "glove →" : "arm →";
+}
+
+// Convert raw pitch coords → SVG point
+function pitchToSVG(d) {
+  const plotHB = isLHP ? -d.hb : d.hb;
+  return { x: cx + plotHB * SCALE, y: cy - d.ivb * SCALE };
+}
+
+// ─── Draw dots ───────────────────────────────────────────────────────────────
+function drawDots() {
+  const layer = document.getElementById("dots-layer");
+  let h = "";
+  rawPitches.forEach((d, i) => {
+    if (d.hb == null || d.ivb == null) return;
+    const { x, y } = pitchToSVG(d);
+    const c = pitchColor(effType(d));
+    const sel = selectedIdxs.has(i);
+    if (sel) {
+      // Selected: larger, opaque, white ring + glow ring
+      h += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="6.5" fill="${c}" fill-opacity="0.12" stroke="none"/>`;
+      h += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.8" fill="${c}" fill-opacity="0.92" stroke="#fff" stroke-width="1.2"/>`;
+    } else {
+      h += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.6" fill="${c}" fill-opacity="0.38" stroke="none"/>`;
+    }
+  });
+  layer.innerHTML = h;
+}
+
+// Centroid labels per (effective) type
+function drawLabels() {
+  const layer = document.getElementById("label-layer");
+  const groups = {};
+  rawPitches.forEach(d => {
+    const t = effType(d);
+    if (!groups[t]) groups[t] = { sx: 0, sy: 0, n: 0 };
+    const { x, y } = pitchToSVG(d);
+    groups[t].sx += x; groups[t].sy += y; groups[t].n++;
+  });
+  let h = "";
+  for (const [pt, g] of Object.entries(groups)) {
+    const x = g.sx / g.n, y = g.sy / g.n;
+    const c = pitchColor(pt);
+    h += `<text x="${x.toFixed(1)}" y="${(y+4).toFixed(1)}" text-anchor="middle"
+      fill="${c}" fill-opacity="0.85" font-size="10" font-weight="700"
+      font-family="'Inter',sans-serif" style="pointer-events:none">${pt}</text>`;
+  }
+  layer.innerHTML = h;
+}
+
+function buildLegend() {
+  const el = document.getElementById("scatter-legend");
+  const types = new Set(rawPitches.map(d => effType(d)));
+  el.innerHTML = [...types].map(pt => `
+    <span class="legend-item">
+      <span class="legend-dot" style="background:${pitchColor(pt)}"></span>${pt}
+    </span>`).join("");
+}
+
+// ─── SVG drag-select interaction ─────────────────────────────────────────────
+const svgEl = document.getElementById("editor-svg");
+const selRectEl = document.getElementById("sel-rect");
+
+let dragStart = null;   // {x,y} in SVG coords
+let didDrag   = false;
+
+function svgPt(e) {
+  const r = svgEl.getBoundingClientRect();
+  const touch = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]);
+  const clientX = touch ? touch.clientX : e.clientX;
+  const clientY = touch ? touch.clientY : e.clientY;
+  return {
+    x: (clientX - r.left) / r.width  * W,
+    y: (clientY - r.top)  / r.height * H,
+  };
+}
+
+svgEl.addEventListener("mousedown",  startDrag);
+svgEl.addEventListener("touchstart", startDrag, { passive: false });
+
+function startDrag(e) {
+  e.preventDefault();
+  dragStart = svgPt(e);
+  didDrag   = false;
+}
+
+document.addEventListener("mousemove",  onDrag);
+document.addEventListener("touchmove",  onDrag, { passive: false });
+
+function onDrag(e) {
+  if (!dragStart) return;
+  e.preventDefault();
+  const cur = svgPt(e);
+  const dx = cur.x - dragStart.x, dy = cur.y - dragStart.y;
+  if (!didDrag && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) didDrag = true;
+  if (!didDrag) return;
+
+  const x = Math.min(dragStart.x, cur.x);
+  const y = Math.min(dragStart.y, cur.y);
+  const w = Math.abs(dx), h = Math.abs(dy);
+  selRectEl.setAttribute("x", x.toFixed(1));
+  selRectEl.setAttribute("y", y.toFixed(1));
+  selRectEl.setAttribute("width",  w.toFixed(1));
+  selRectEl.setAttribute("height", h.toFixed(1));
+  selRectEl.style.display = "";
+
+  // Live-preview: highlight dots inside the rect without committing
+  const x1 = x + w, y1 = y + h;
+  const preview = new Set();
+  rawPitches.forEach((d, i) => {
+    const p = pitchToSVG(d);
+    if (p.x >= x && p.x <= x1 && p.y >= y && p.y <= y1) preview.add(i);
+  });
+  // Draw preview (keep existing permanent selection + add preview)
+  const combined = new Set([...selectedIdxs, ...preview]);
+  drawPreview(combined, preview);
+}
+
+function drawPreview(combined, preview) {
+  const layer = document.getElementById("dots-layer");
+  let h = "";
+  rawPitches.forEach((d, i) => {
+    if (d.hb == null || d.ivb == null) return;
+    const { x, y } = pitchToSVG(d);
+    const c   = pitchColor(effType(d));
+    const sel = combined.has(i);
+    const inPrev = preview && preview.has(i);
+    if (sel) {
+      const opacity = inPrev ? "0.65" : "0.92";
+      h += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="6.5" fill="${c}" fill-opacity="0.12" stroke="none"/>`;
+      h += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.8" fill="${c}" fill-opacity="${opacity}" stroke="#fff" stroke-width="1.2"/>`;
+    } else {
+      h += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.6" fill="${c}" fill-opacity="0.33" stroke="none"/>`;
+    }
+  });
+  layer.innerHTML = h;
+}
+
+document.addEventListener("mouseup",  endDrag);
+document.addEventListener("touchend", endDrag);
+
+function endDrag(e) {
+  if (!dragStart) return;
+  selRectEl.style.display = "none";
+
+  const end = svgPt(e.changedTouches ? e : e);
+
+  if (didDrag) {
+    // Commit rectangle selection
+    const x0 = Math.min(dragStart.x, end.x), x1 = Math.max(dragStart.x, end.x);
+    const y0 = Math.min(dragStart.y, end.y), y1 = Math.max(dragStart.y, end.y);
+    const additive = e.shiftKey;
+    if (!additive) selectedIdxs = new Set();
+    rawPitches.forEach((d, i) => {
+      const p = pitchToSVG(d);
+      if (p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1) selectedIdxs.add(i);
+    });
+  } else {
+    // Single click — toggle nearest dot
+    const CLICK_R = 10;  // px in SVG coords
+    let best = -1, bestD = Infinity;
+    rawPitches.forEach((d, i) => {
+      const p   = pitchToSVG(d);
+      const dist = Math.hypot(p.x - dragStart.x, p.y - dragStart.y);
+      if (dist < CLICK_R && dist < bestD) { best = i; bestD = dist; }
+    });
+    if (best >= 0) {
+      if (e.shiftKey) {
+        selectedIdxs.has(best) ? selectedIdxs.delete(best) : selectedIdxs.add(best);
+      } else {
+        selectedIdxs = new Set([best]);
+      }
+    } else if (!e.shiftKey) {
+      selectedIdxs = new Set();
+    }
+  }
+
+  dragStart = null;
+  didDrag   = false;
+  onSelectionChanged();
+}
+
+// ─── Selection UI updates ────────────────────────────────────────────────────
+function onSelectionChanged() {
+  drawDots();
+  drawLabels();
+
+  const n = selectedIdxs.size;
+  const selBar    = document.getElementById("sel-bar");
+  const btnClear  = document.getElementById("btn-clear-sel");
+  const hintEl    = document.getElementById("sel-hint");
+
+  if (n === 0) {
+    selBar.style.display   = "none";
+    btnClear.style.display = "none";
+    hintEl.textContent = "Drag to select pitches";
+    document.getElementById("sel-metrics").style.display = "none";
+    return;
+  }
+
+  selBar.style.display   = "flex";
+  btnClear.style.display = "";
+  hintEl.textContent = `${n} selected`;
+
+  document.getElementById("sel-count").textContent = `${n} pitch${n===1?"":"es"} selected`;
+
+  // Type breakdown of selected + per-type metric accumulators
+  const typeData = {};
+  [...selectedIdxs].forEach(i => {
+    const d = rawPitches[i];
+    const t = effType(d);
+    if (!typeData[t]) typeData[t] = { n: 0, velo: [], spin: [], ivb: [], hb: [], vaa: [], haa: [], ext: [], sp: [], zone_in: 0, whiff: 0, desc_n: 0 };
+    const g = typeData[t];
+    g.n++;
+    if (d.velo  != null) g.velo.push(d.velo);
+    if (d.spin  != null) g.spin.push(d.spin);
+    if (d.ivb   != null) g.ivb.push(d.ivb);
+    if (d.hb    != null) g.hb.push(d.hb);
+    if (d.vaa   != null) g.vaa.push(Math.abs(d.vaa));
+    if (d.haa   != null) g.haa.push(Math.abs(d.haa));
+    if (d.ext   != null) g.ext.push(d.ext);
+    if (d.sp    != null) g.sp.push(d.sp);
+    if (d.zone  != null) { if (d.zone >= 1 && d.zone <= 9) g.zone_in++; }
+    if (d.description != null) {
+      g.desc_n++;
+      if (d.description.toLowerCase().includes('swinging_strike')) g.whiff++;
+    }
+  });
+
+  document.getElementById("sel-types").textContent =
+    Object.entries(typeData).map(([t,g]) => `${t}: ${g.n}`).join("  ·  ");
+
+  // Render per-type metrics table
+  const metricsEl = document.getElementById("sel-metrics");
+  const avg = arr => arr.length ? (arr.reduce((s, v) => s + v, 0) / arr.length) : null;
+  const fmt1 = v => v != null ? v.toFixed(1) : "—";
+  const fmt0 = v => v != null ? Math.round(v) : "—";
+  const fmtPct = (num, den) => den > 0 ? (num / den * 100).toFixed(1) + "%" : "—";
+
+  const rows = Object.entries(typeData)
+    .sort((a, b) => b[1].n - a[1].n)
+    .map(([t, g]) => {
+      const c = pitchColor(t);
+      return `<tr>
+        <td><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${c};margin-right:5px;vertical-align:middle"></span>${t}</td>
+        <td>${g.n}</td>
+        <td>${fmt1(avg(g.velo))}</td>
+        <td>${fmt1(avg(g.ivb))}"</td>
+        <td>${fmt1(avg(g.hb))}"</td>
+        <td>${fmt0(avg(g.spin))}</td>
+        <td>${fmt1(avg(g.vaa))}°</td>
+        <td>${fmt1(avg(g.haa))}°</td>
+        <td>${fmt1(avg(g.ext))}</td>
+        <td>${fmtPct(g.zone_in, g.n)}</td>
+        <td>${fmtPct(g.whiff, g.desc_n)}</td>
+        <td>${fmt1(avg(g.sp))}</td>
+      </tr>`;
+    }).join("");
+
+  metricsEl.style.display = rows ? "block" : "none";
+  metricsEl.innerHTML = rows ? `<table>
+    <thead><tr>
+      <th>Pitch</th><th>#</th><th>Velo</th><th>iVB</th><th>HB</th>
+      <th>Spin</th><th>VAA</th><th>HAA</th><th>Ext</th>
+      <th>Zone%</th><th>SwStr%</th><th>Stuff+</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>` : "";
+
+  // Default the "reclassify as" dropdown to the most common selected type
+  const dominant = Object.entries(typeData).sort((a,b)=>b[1].n-a[1].n)[0]?.[0];
+  const sel = document.getElementById("reclassify-to");
+  if (sel && sel.value === dominant) {/* keep */}
+  // keep whatever was previously chosen unless it's the same as dominant
+}
+
+function clearSelection() {
+  selectedIdxs = new Set();
+  onSelectionChanged();
+}
+
+// ─── Build reclassify-to dropdown ───────────────────────────────────────────
+function buildReclassifyDropdown() {
+  const sel = document.getElementById("reclassify-to");
+  sel.innerHTML = ALL_TYPES.map(t =>
+    `<option value="${t}">${t}</option>`
+  ).join("");
+}
+
+// ─── Apply reclassification ──────────────────────────────────────────────────
+function applyReclassify() {
+  if (selectedIdxs.size === 0) return;
+  const newType = document.getElementById("reclassify-to").value;
+
+  // Build set of keys being changed, track which original types they had
+  const typesFrom = {};
+  const keysChanged = [];
+  [...selectedIdxs].forEach(i => {
+    const d = rawPitches[i];
+    const old = effType(d);
+    if (old !== newType) {
+      typesFrom[old] = (typesFrom[old] || 0) + 1;
+      keysChanged.push(pKey(d));
+    }
+  });
+
+  if (keysChanged.length === 0) {
+    // All selected pitches already this type — just clear selection
+    clearSelection();
+    return;
+  }
+
+  // Apply overrides
+  keysChanged.forEach(k => { appliedOvr[k] = newType; });
+
+  // Build a human-readable label for the pending item
+  const fromStr = Object.entries(typesFrom).map(([t,c])=>`${c}×${t}`).join(", ");
+  const label = `${fromStr} → ${newType}`;
+
+  pendingItems.push({
+    label,
+    keys:     keysChanged,
+    to_type:  newType,
+    count:    keysChanged.length,
+    fromStr,
+  });
+
+  clearSelection();
+  renderPendingList();
+  buildLegend();
+
+  document.getElementById("calc-btn").disabled     = false;
+  document.getElementById("save-btn").disabled     = false;
+  document.getElementById("btn-clear-all").style.display = "";
+  document.getElementById("results-section").style.display = "none";
+}
+
+// ─── Pending list ────────────────────────────────────────────────────────────
+function renderPendingList() {
+  const container = document.getElementById("pending-list");
+  if (pendingItems.length === 0) {
+    container.innerHTML = `<div class="empty-state" id="pending-empty">
+      Draw on the chart to select pitches, then apply a new pitch type.</div>`;
+    document.getElementById("btn-clear-all").style.display = "none";
+    document.getElementById("calc-btn").disabled = true;
+    document.getElementById("save-btn").disabled = true;
+    return;
+  }
+
+  container.innerHTML = pendingItems.map((item, idx) => `
+    <div class="pending-item">
+      <span class="pending-dot" style="background:${pitchColor(item.to_type)}"></span>
+      <span class="pending-label">${item.label}</span>
+      <span class="pending-count">${item.count}p</span>
+      <button class="pending-remove" onclick="removePending(${idx})" title="Remove">×</button>
+    </div>`).join("");
+}
+
+function removePending(idx) {
+  const item = pendingItems[idx];
+  if (!item) return;
+
+  // Undo overrides from this item
+  item.keys.forEach(k => {
+    // Only undo if no later pending item re-overrides this key
+    const laterOverride = pendingItems.slice(idx + 1).some(later => later.keys.includes(k));
+    if (!laterOverride) delete appliedOvr[k];
+  });
+
+  pendingItems.splice(idx, 1);
+  drawDots();
+  drawLabels();
+  buildLegend();
+  renderPendingList();
+  if (pendingItems.length === 0) {
+    document.getElementById("results-section").style.display = "none";
+  }
+}
+
+function clearAll() {
+  appliedOvr   = {};
+  pendingItems = [];
+  selectedIdxs = new Set();
+  drawDots();
+  drawLabels();
+  buildLegend();
+  renderPendingList();
+  onSelectionChanged();
+  document.getElementById("results-section").style.display = "none";
+  document.getElementById("error-msg").style.display = "none";
+}
+
+// ─── Recalculate ─────────────────────────────────────────────────────────────
+async function recalculate() {
+  if (Object.keys(appliedOvr).length === 0) return;
+
+  const calcBtn = document.getElementById("calc-btn");
+  const spinner = document.getElementById("spinner");
+  const errEl   = document.getElementById("error-msg");
+  const resSec  = document.getElementById("results-section");
+
+  calcBtn.disabled = true;
+  spinner.style.display = "inline";
+  errEl.style.display   = "none";
+  resSec.style.display  = "none";
+
+  try {
+    const res = await fetch("/api/reclassify", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({
+        player_name:     playerName,
+        season:          season,
+        pitch_overrides: appliedOvr,
+        ...(gamePk != null ? { game_pk: gamePk } : {}),
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      errEl.textContent  = data.error || "Unknown error";
+      errEl.style.display = "block";
+      return;
+    }
+    renderResults(data.pitches);
+    resSec.style.display = "flex";
+    resSec.style.flexDirection = "column";
+    resSec.style.gap = "10px";
+    resSec.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  } catch (err) {
+    errEl.textContent  = "Network error: " + err.message;
+    errEl.style.display = "block";
+  } finally {
+    calcBtn.disabled = false;
+    spinner.style.display = "none";
+  }
+}
+
+// Persist the pending corrections (Sprint 3). Unlike "View in Profile" — which is a
+// throwaway in-memory preview — this writes to the pitch_overrides table so the
+// corrections survive refresh, restart, and the re-scrapes that replace raw tables.
+async function saveChanges() {
+  if (Object.keys(appliedOvr).length === 0) return;
+  const btn = document.getElementById("save-btn");
+  const msg = document.getElementById("save-msg");
+  const errEl = document.getElementById("error-msg");
+  btn.disabled = true;
+  msg.style.display = "none";
+  errEl.style.display = "none";
+  try {
+    const res = await fetch("/api/overrides", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({
+        player_name:     playerName,
+        season:          season,
+        pitch_overrides: appliedOvr,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      errEl.textContent   = data.error || "Could not save changes";
+      errEl.style.display = "block";
+      btn.disabled = false;
+      return;
+    }
+    msg.textContent = `Saved ${data.saved} correction${data.saved === 1 ? "" : "s"} · ${data.season_total} stored for ${season}`;
+    msg.style.display = "inline";
+  } catch (e) {
+    errEl.textContent   = "Could not save changes: " + e;
+    errEl.style.display = "block";
+    btn.disabled = false;
+  }
+}
+
+// Delete every SAVED correction for this pitcher (undo persistence, not just the
+// pending edits that "Clear all changes" drops).
+async function revertSaved() {
+  if (!confirm("Delete all saved pitch-type corrections for this pitcher? This restores the original labels.")) return;
+  const btn = document.getElementById("btn-revert");
+  const msg = document.getElementById("save-msg");
+  const errEl = document.getElementById("error-msg");
+  btn.disabled = true; msg.style.display = "none"; errEl.style.display = "none";
+  try {
+    const res = await fetch("/api/overrides/revert", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ player_name: playerName, season: season }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      errEl.textContent = data.error || "Could not revert"; errEl.style.display = "block";
+      btn.disabled = false; return;
+    }
+    msg.textContent = `Reverted ${data.reverted} saved correction${data.reverted === 1 ? "" : "s"}`;
+    msg.style.display = "inline";
+    setTimeout(() => window.location.reload(), 900);
+  } catch (e) {
+    errEl.textContent = "Could not revert: " + e; errEl.style.display = "block";
+    btn.disabled = false;
+  }
+}
+
+function viewInProfile() {
+  sessionStorage.setItem("sp_preview", JSON.stringify({
+    player_name:     playerName,
+    season:          season,
+    game_pk:         gamePk,
+    pitch_overrides: appliedOvr,
+  }));
+  window.location.href = `/player/${encodeURIComponent(playerName)}/${season}`;
+}
+
+function renderResults(pitches) {
+  const grid = document.getElementById("results-grid");
+  grid.innerHTML = pitches.map(p => {
+    const c     = pitchColor(p.pitch_type);
+    const hasOld = p.stuff_plus_old != null;
+    const delta  = hasOld ? p.stuff_plus_new - p.stuff_plus_old : null;
+    let deltaBadge = "";
+    if (delta != null) {
+      const sign = delta > 0 ? "+" : "";
+      const cls  = delta > 0.4 ? "delta-pos" : delta < -0.4 ? "delta-neg" : "delta-neu";
+      deltaBadge = `<span class="delta ${cls}">${sign}${delta.toFixed(1)}</span>`;
+    }
+    const remapBadge = p.remapped_from && p.remapped_from.length
+      ? `<span class="result-badge">← ${p.remapped_from.join(", ")}</span>` : "";
+    return `
+    <div class="result-card">
+      <div class="result-top">
+        <span class="result-pt" style="color:${c}">${p.pitch_type}</span>
+        ${remapBadge}
+        <span class="result-n">${p.n.toLocaleString()}p</span>
+      </div>
+      ${hasOld ? `
+      <div class="result-row">
+        <span class="result-lbl">Original</span>
+        <span class="result-val" style="color:var(--muted)">${p.stuff_plus_old.toFixed(1)}</span>
+      </div>` : ""}
+      <div class="result-row">
+        <span class="result-lbl">New</span>
+        <span style="display:flex;align-items:baseline">
+          <span class="result-val">${p.stuff_plus_new.toFixed(1)}</span>${deltaBadge}
+        </span>
+      </div>
+      ${p.xwoba_contact != null ? `<div class="result-row"><span class="result-lbl">xwOBAcon</span><span class="result-val">${p.xwoba_contact.toFixed(3)}</span></div>` : ""}
+      ${p.zone_pct != null ? `<div class="result-row"><span class="result-lbl">Zone%</span><span class="result-val">${p.zone_pct.toFixed(1)}</span></div>` : ""}
+      ${p.whiff_pct != null ? `<div class="result-row"><span class="result-lbl">Whiff%</span><span class="result-val">${p.whiff_pct.toFixed(1)}</span></div>` : ""}
+    </div>`;
+  }).join("");
+}
+
+// ─── Load data ────────────────────────────────────────────────────────────────
+async function load() {
+  buildGrid();
+  buildReclassifyDropdown();
+
+  const rawUrl = gamePk != null
+    ? `/api/player_pitches_raw/${encodeURIComponent(playerName)}/${season}?game_pk=${gamePk}`
+    : `/api/player_pitches_raw/${encodeURIComponent(playerName)}/${season}`;
+  const [rawRes, profileRes] = await Promise.allSettled([
+    fetch(rawUrl),
+    fetch(`/api/player/${encodeURIComponent(playerName)}/${season}`),
+  ]);
+
+  if (profileRes.status === "fulfilled" && profileRes.value.ok) {
+    const profile = await profileRes.value.json();
+    setHandedness(profile.p_throws === "L");
+  }
+
+  if (rawRes.status === "fulfilled" && rawRes.value.ok) {
+    rawPitches = await rawRes.value.json();
+  }
+
+  if (!rawPitches.length) {
+    document.getElementById("dots-layer").innerHTML =
+      `<text x="${cx}" y="${cy}" text-anchor="middle" fill="#4a5568"
+         font-size="12" font-family="'Inter',sans-serif">No pitch data available</text>`;
+    return;
+  }
+
+  drawDots();
+  drawLabels();
+  buildLegend();
+  renderPendingList();
+}
+
+load();
+</script>
+</body>
+</html>

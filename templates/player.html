@@ -1,0 +1,1611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Player Profile – Stuff+</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #cbd2db;
+      --surface:  #d9dee6;
+      --surface2: #dfe3e9;
+      --border:   #c6ccd5;
+      --border2:  #b4bbc6;
+      --text:     #11161d;
+      --muted:    #586070;
+      --muted2:   #79828f;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px;
+      line-height: 1.4;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* ─── Download-PNG button ─────────────────────────── */
+    .dl-btn {
+      appearance: none; border: 1px solid var(--border2);
+      background: var(--surface); color: var(--text);
+      font-family: inherit; font-size: 12px; font-weight: 600;
+      padding: 6px 11px; border-radius: 7px; cursor: pointer;
+      white-space: nowrap; margin-left: 12px; align-self: center;
+    }
+    .dl-btn:hover { background: var(--surface2); }
+    .dl-btn:disabled { opacity: .55; cursor: default; }
+
+    /* ─── Export footer (only rendered into the PNG) ──── */
+    #export-footer {
+      margin: 18px 20px 8px; padding: 14px 18px 4px;
+      border-top: 1px solid var(--border2);
+      display: flex; align-items: flex-end; justify-content: space-between; gap: 24px;
+    }
+    #export-footer .ef-note { font-size: 12px; color: var(--muted); line-height: 1.5; max-width: 780px; }
+    #export-footer .ef-note b { color: var(--text); }
+    #export-footer .ef-mark { font-size: 16px; font-weight: 500; color: var(--muted); letter-spacing: -0.2px; white-space: nowrap; }
+
+    /* ─── Export mode (headless-Chrome screenshot) ─────── */
+    body.export #dl-png,
+    body.export .hdr-back { display: none !important; }
+    body.export main { min-height: 0 !important; overflow: visible !important; }   /* no viewport-tall gap */
+    body.export .above-fold { height: auto !important; max-height: none !important; }  /* natural height */
+    body.export .heat-section,                       /* drop pitch locations from the export */
+    body.export .zone-panel { display: none !important; }
+
+    /* ─── Header ─────────────────────────────────── */
+    header {
+      background: #d9dee6;
+      border-bottom: 1px solid #d2d8df;
+      box-shadow: 0 1px 2px rgba(16,24,40,0.04);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .hdr-back {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 11px;
+      white-space: nowrap;
+      align-self: flex-start;
+      padding-top: 6px;
+      flex-shrink: 0;
+      transition: color .15s;
+    }
+    .hdr-back:hover { color: var(--text); }
+    .hdr-headshot {
+      width: 80px;
+      height: 80px;
+      border-radius: 8px;
+      object-fit: contain;
+      object-position: center;
+      border: 1px solid #e6e8ec;
+      flex-shrink: 0;
+      background: #d9dee6;
+      display: none;
+    }
+    .hdr-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .hdr-name {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.1;
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .hdr-bio {
+      font-size: 12px;
+      color: #646b75;
+      margin-bottom: 2px;
+    }
+    .hdr-team-line {
+      font-size: 11px;
+      color: var(--muted2);
+    }
+    .hdr-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .hdr-logo {
+      height: 52px;
+      width:  52px;
+      object-fit: contain;
+      display: none;
+    }
+    .hdr-stats-row {
+      display: flex;
+      gap: 18px;
+    }
+    .hdr-stat { text-align: right; }
+    .hdr-stat-val {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1;
+    }
+    .hdr-stat-lbl {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.9px;
+      color: var(--muted2);
+      margin-top: 2px;
+    }
+
+    /* ─── Game dropdown ──────────────────────────── */
+    .game-select-wrap {
+      position: relative;
+      align-self: flex-start;
+    }
+    .game-select {
+      background: #dde2e8;
+      border: 1px solid #d7dbe0;
+      color: #3a414b;
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 5px 28px 5px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      max-width: 220px;
+      min-width: 140px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23768390'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+    }
+    .game-select:focus { outline: none; border-color: #98a0ab; }
+    .game-select option { background: #d9dee6; }
+
+    /* ─── Game stat boxes (header, game view) ─────── */
+    .game-stats-grid {
+      display: flex;
+      gap: 5px;
+      flex-wrap: nowrap;
+    }
+    .game-stat-box {
+      background: #d9dee6;
+      border: 1px solid #e6e8ec;
+      box-shadow: 0 1px 2px rgba(16,24,40,0.04);
+      border-radius: 8px;
+      padding: 4px 10px 5px;
+      text-align: center;
+      min-width: 38px;
+    }
+    .game-stat-box-lbl {
+      font-size: 7px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #98a0ab;
+      margin-bottom: 1px;
+    }
+    .game-stat-box-val {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.3px;
+      line-height: 1.1;
+    }
+
+    /* ─── Layout ─────────────────────────────────── */
+    main {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 10px 16px;
+      min-height: calc(100vh - 80px);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    /* Wrapper that holds the above-fold content at exactly viewport height */
+    .above-fold {
+      height: calc(100vh - 118px);
+      max-height: 940px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 0;
+    }
+
+    .section-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.3px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* ─── Main 2-column grid ─────────────────────── */
+    .main-grid {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 440px 1fr;
+      grid-template-rows: 1fr;
+      gap: 10px;
+      align-items: stretch;
+    }
+    .left-col {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 0;
+      height: 100%;
+    }
+    .heat-section { flex-shrink: 0; }
+
+    /* ─── Compact game-view header ──────────────────── */
+    header.header--game { padding: 10px 20px; }
+    header.header--game .hdr-headshot { width: 44px; height: 44px; border-radius: 6px; }
+    header.header--game .hdr-back { margin-right: 12px; }
+    header.header--game .hdr-info {
+      position: static;
+      transform: none;
+      text-align: left;
+      pointer-events: auto;
+      flex: 0 0 auto;
+    }
+    header.header--game .hdr-name  { font-size: 18px; margin-bottom: 1px; }
+    header.header--game .hdr-bio   { font-size: 11px; margin-bottom: 0; }
+    header.header--game .hdr-team-line { font-size: 10px; }
+    header.header--game .hdr-right {
+      flex-direction: row;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+    }
+    header.header--game .game-select-wrap { margin-left: auto; }
+    header.header--game .hdr-logo { height: 34px; width: 34px; }
+
+    /* ─── Game view wider left column + sub-row ─────── */
+    .game-grid { grid-template-columns: 420px 1fr; }
+    .game-left-sub {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      gap: 10px;
+    }
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      box-shadow: 0 1px 2px rgba(16,24,40,0.06), 0 2px 6px rgba(16,24,40,0.07);
+      border-radius: 12px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0;
+      min-height: 0;
+    }
+    .usage-rows {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .usage-row {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 0;
+      border-top: 1px solid #dde2e8;
+    }
+    .usage-row:first-child { border-top: none; }
+
+    /* ─── Stats table ────────────────────────────── */
+    .table-scroll {
+      flex: 1;
+      overflow: auto;
+      min-width: 0;
+    }
+    table {
+      width: 100%;
+      table-layout: fixed;
+      border-collapse: collapse;
+      white-space: nowrap;
+    }
+    thead th {
+      padding: 6px 4px 5px;
+      font-size: 8.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      color: var(--muted);
+      text-align: center;
+      background: #e4e8ed;
+      border-bottom: 2px solid var(--border2);
+      border-right: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    thead th:first-child { text-align: center; padding-left: 8px; width: 128px; }
+    thead th:last-child  { border-right: none; border-left: 2px solid var(--border2); background: #d2d8df; }
+    thead th:nth-last-child(2) { white-space: normal; line-height: 1.2; }
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background .1s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:nth-child(even) { background: rgba(17,24,39,0.022); }
+    tbody tr:hover { background: var(--surface2); }
+    tbody td {
+      padding: 0 5px;
+      text-align: center;
+      vertical-align: middle;
+      font-family: "Inter", sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum";
+      letter-spacing: -0.2px;
+      color: #39404a;
+      border-right: 1px solid var(--border);
+      overflow: hidden;
+    }
+    tbody td:first-child {
+      text-align: center;
+      padding-left: 0;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      vertical-align: middle;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    tbody td:last-child { border-right: none; border-left: 2px solid var(--border2); background: rgba(17,24,39,0.03); }
+    .row-color {
+      display: inline-block;
+      width: 3px;
+      height: 12px;
+      border-radius: 2px;
+      margin: 0 6px 0 0;
+      vertical-align: middle;
+      flex-shrink: 0;
+    }
+    .sp-num { font-weight: 700; font-size: 15px; letter-spacing: -0.3px; }
+    .stat-chip {
+      display: block;
+      padding: 2px 4px;
+      border-radius: 4px;
+      font-size: 12px;
+      text-align: center;
+    }
+
+    /* ─── Heatmap section ────────────────────────── */
+    .heat-section { margin-bottom: 28px; }
+    .heat-splits {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .heat-half {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      box-shadow: 0 1px 2px rgba(16,24,40,0.06), 0 2px 6px rgba(16,24,40,0.07);
+      border-radius: 12px;
+      padding: 16px 18px;
+    }
+    .heat-half-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.1px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+    .heat-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .heat-item { text-align: center; }
+    .heat-abbrev {
+      margin-bottom: 5px;
+      line-height: 1.2;
+    }
+    .heat-abbrev .ha-pt {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: block;
+    }
+    .heat-abbrev .ha-name {
+      font-size: 8.5px;
+      font-weight: 500;
+      color: #98a0ab;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      display: block;
+    }
+    canvas.hc { display: block; border-radius: 3px; }
+
+    /* ─── Loading / error ────────────────────────── */
+    .loading { text-align: center; padding: 80px; color: var(--muted); }
+    .error   { text-align: center; padding: 80px; color: #f85149; }
+
+    @media (max-width: 900px) {
+      .above-fold { height: auto; max-height: none; }
+      .main-grid { grid-template-columns: 1fr; height: auto; }
+      .left-col { flex: none; height: auto; }
+      .heat-splits { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 600px) {
+      /* Header: allow name to wrap instead of truncating */
+      header { padding: 8px 12px; }
+      .hdr-name { white-space: normal; font-size: 20px; }
+
+      /* Above-fold: natural document scroll, no fixed viewport height */
+      .above-fold { height: auto !important; }
+
+      /* All panels: auto height, allow content to show */
+      .panel { overflow: visible !important; flex: none !important; height: auto !important; }
+
+      /* Movement profile panel: fixed height so SVG has space to render */
+      .left-col > .panel:first-child {
+        height: 300px !important;
+        overflow: hidden !important;
+      }
+
+      /* Table: horizontal scroll instead of column compression */
+      .table-scroll {
+        flex: none !important;
+        height: auto !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+      }
+      .table-scroll table {
+        table-layout: auto !important;
+        min-width: 700px;
+        width: auto !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="/" class="hdr-back">← Back</a>
+  <img id="hdr-headshot" class="hdr-headshot" alt="" />
+  <div class="hdr-info">
+    <div class="hdr-name" id="hdr-name">Loading…</div>
+    <div class="hdr-bio"  id="hdr-bio"></div>
+    <div class="hdr-team-line" id="hdr-team-line"></div>
+  </div>
+  <div class="hdr-right">
+    <img id="hdr-logo" class="hdr-logo" alt="" />
+    <div id="hdr-stats-row" class="hdr-stats-row"></div>
+    <div id="hdr-game-select-wrap" class="game-select-wrap" style="display:none">
+      <select id="hdr-game-select" class="game-select"></select>
+    </div>
+    <button id="dl-png" class="dl-btn" onclick="serverExportPNG()" title="Download this summary as a PNG">⬇ PNG</button>
+  </div>
+</header>
+
+<main id="main">
+  <div class="loading">Loading pitcher profile…</div>
+</main>
+
+<script>
+const playerName = decodeURIComponent("{{ player_name }}");
+const season     = "{{ season }}";
+// Display name: "Last, First" → "First Last"
+const displayName = (() => {
+  const parts = playerName.split(', ');
+  return parts.length === 2 ? `${parts[1]} ${parts[0]}` : playerName;
+})();
+
+// Export mode: the /export_png route loads this page with ?export=1 in headless
+// Chrome and screenshots it. Hide the UI chrome, let the page flow to full height,
+// and show the footer so it lands in the image.
+const EXPORT = new URLSearchParams(location.search).get('export') === '1';
+if (EXPORT) document.body.classList.add('export');
+
+// ─── Helpers ──────────────────────────────────────────────────────────────
+function fmt(v, dec = 1) {
+  if (v == null) return "—";
+  return (v >= 0 ? "+" : "") + Number(v).toFixed(dec);
+}
+function fmtAbs(v, dec = 1, suf = "") {
+  if (v == null) return "—";
+  return Number(v).toFixed(dec) + suf;
+}
+function fmtPct(v) {
+  if (v == null) return "—";
+  return Number(v).toFixed(1) + "%";
+}
+function fmtSpin(v) {
+  if (v == null) return "—";
+  return Math.round(v).toLocaleString();
+}
+
+// ─── Fixed pitch-type color palette ──────────────────────────────────────
+const PITCH_COLORS = {
+  // Fastballs — reds / oranges (deepened for pop on light bg)
+  "FF": "#e23b3b",
+  "FA": "#e23b3b",
+  "SI": "#ef6a2e",
+  "FC": "#e8920c",
+  // Breaking balls — blues / purples
+  "SL": "#1d9be0",
+  "ST": "#0b82d4",
+  "SV": "#8157c9",
+  "CU": "#6a3fc0",
+  "KC": "#a032bc",
+  "CS": "#b85cce",
+  "GY": "#e02873",
+  "SC": "#d12f2f",
+  // Offspeed — greens
+  "CH": "#2e9e50",
+  "FS": "#129489",
+  "FO": "#03a7c2",
+  // Specialty
+  "KN": "#6f8694",
+  "EP": "#d99a00",
+};
+function pitchColor(pt) { return PITCH_COLORS[pt] || "#5f6772"; }
+
+// Stuff+ → color gradient: red (low) → neutral (100) → green (high)
+function stuffColor(val) {
+  if (val == null) return "#5f6772";
+  const v = parseFloat(val);
+  // Vivid diverging ramp: warm (red→orange→gold) below 100, flips quickly to
+  // green→blue above 100 so the mid-range reads punchy instead of muddy/olive.
+  const stops = [
+    { at: 80,  c: [220, 38,  38]  },   // vivid red
+    { at: 95,  c: [240, 110, 20]  },   // vivid orange
+    { at: 100, c: [216, 150, 10]  },   // vivid gold
+    { at: 102, c: [30,  162, 78]  },   // jump to green just above average
+    { at: 110, c: [22,  150, 70]  },   // green
+    { at: 120, c: [37,  99,  235] },   // vivid blue
+  ];
+  if (v <= stops[0].at) return `rgb(${stops[0].c.join(",")})`;
+  if (v >= stops[stops.length-1].at) return `rgb(${stops[stops.length-1].c.join(",")})`;
+  let lo, hi;
+  for (let i = 0; i < stops.length - 1; i++) {
+    if (v <= stops[i+1].at) { lo = stops[i]; hi = stops[i+1]; break; }
+  }
+  const t = (v - lo.at) / (hi.at - lo.at);
+  const r = Math.round(lo.c[0] + t * (hi.c[0] - lo.c[0]));
+  const g = Math.round(lo.c[1] + t * (hi.c[1] - lo.c[1]));
+  const b = Math.round(lo.c[2] + t * (hi.c[2] - lo.c[2]));
+  return `rgb(${r},${g},${b})`;
+}
+
+// Stat box background color — green → yellow → orange → red
+// lowerIsBetter=true flips so lo=good(green), hi=bad(red)
+function statBoxColor(val, lo, mid, hi, lowerIsBetter = false) {
+  if (val == null || isNaN(parseFloat(val))) return null;
+  const v = parseFloat(val);
+  // stops ordered bad→good; lowerIsBetter flips which end is bad
+  const stops = lowerIsBetter
+    ? [ { at: lo,  c: [63,  200, 80]  },  // good = green
+        { at: mid, c: [230, 210, 40]  },  // mid  = yellow
+        { at: hi,  c: [248, 60,  55]  } ] // bad  = red
+    : [ { at: lo,  c: [248, 60,  55]  },  // bad  = red
+        { at: mid, c: [230, 210, 40]  },  // mid  = yellow
+        { at: hi,  c: [63,  200, 80]  } ]; // good = green
+  if (v <= stops[0].at) { const c = stops[0].c; return `rgba(${c[0]},${c[1]},${c[2]},0.28)`; }
+  if (v >= stops[stops.length-1].at) { const c = stops[stops.length-1].c; return `rgba(${c[0]},${c[1]},${c[2]},0.28)`; }
+  let lo2, hi2;
+  for (let i = 0; i < stops.length - 1; i++) {
+    if (v <= stops[i+1].at) { lo2 = stops[i]; hi2 = stops[i+1]; break; }
+  }
+  const t = (v - lo2.at) / (hi2.at - lo2.at);
+  const r = Math.round(lo2.c[0] + t*(hi2.c[0]-lo2.c[0]));
+  const g = Math.round(lo2.c[1] + t*(hi2.c[1]-lo2.c[1]));
+  const b = Math.round(lo2.c[2] + t*(hi2.c[2]-lo2.c[2]));
+  return `rgba(${r},${g},${b},0.28)`;
+}
+function chipCell(val, text, lo, mid, hi, lowerIsBetter = false) {
+  const bg = statBoxColor(val, lo, mid, hi, lowerIsBetter);
+  if (!bg) return `<td>${text}</td>`;
+  return `<td><span class="stat-chip" style="background:${bg}">${text}</span></td>`;
+}
+
+// Per-pitch-type league baselines (2026 season, [lo, mid, hi] = mean ∓ 1σ across pitchers).
+// Zone% = % in strike zone; SwStr% = whiffs / swings. Coloring is relative to how each
+// pitch type performs — a 20% whiff rate is elite for a sinker, average for a slider.
+const PT_BASE = {
+  FF:{zone:[44.0,50.5,57.0], swstr:[11.2,18.6,26.1]}, SI:{zone:[48.9,54.9,60.9], swstr:[ 5.8,11.3,16.7]},
+  FC:{zone:[43.0,49.7,56.3], swstr:[13.2,20.5,27.9]}, SL:{zone:[35.5,42.7,49.9], swstr:[22.0,31.7,41.5]},
+  ST:{zone:[33.9,41.2,48.5], swstr:[19.4,28.6,37.7]}, CU:{zone:[32.0,39.6,47.1], swstr:[18.5,28.5,38.6]},
+  KC:{zone:[31.6,37.4,43.1], swstr:[19.6,31.1,42.6]}, CH:{zone:[27.9,35.7,43.4], swstr:[18.9,28.8,38.6]},
+  FS:{zone:[26.9,34.4,42.0], swstr:[21.3,31.7,42.2]},
+};
+const PT_BASE_DEF = { zone:[38,46,54], swstr:[16,26,36] };
+function ptBase(pt) { return PT_BASE[pt] || PT_BASE_DEF; }
+
+// ─── Team logo helpers ─────────────────────────────────────────────────────
+const TEAM_ESPN = {
+  "AZ":"ari","ATL":"atl","BAL":"bal","BOS":"bos","CHC":"chc","CWS":"chw",
+  "CIN":"cin","CLE":"cle","COL":"col","DET":"det","HOU":"hou","KC":"kc",
+  "LAA":"laa","LAD":"lad","MIA":"mia","MIL":"mil","MIN":"min","NYM":"nym",
+  "NYY":"nyy","OAK":"oak","PHI":"phi","PIT":"pit","SD":"sd","SF":"sf",
+  "SEA":"sea","STL":"stl","TB":"tb","TEX":"tex","TOR":"tor","WSH":"wsh",
+};
+const TEAM_NAMES = {
+  "AZ":"Arizona Diamondbacks","ATL":"Atlanta Braves","BAL":"Baltimore Orioles",
+  "BOS":"Boston Red Sox","CHC":"Chicago Cubs","CWS":"Chicago White Sox",
+  "CIN":"Cincinnati Reds","CLE":"Cleveland Guardians","COL":"Colorado Rockies",
+  "DET":"Detroit Tigers","HOU":"Houston Astros","KC":"Kansas City Royals",
+  "LAA":"Los Angeles Angels","LAD":"Los Angeles Dodgers","MIA":"Miami Marlins",
+  "MIL":"Milwaukee Brewers","MIN":"Minnesota Twins","NYM":"New York Mets",
+  "NYY":"New York Yankees","OAK":"Oakland Athletics","PHI":"Philadelphia Phillies",
+  "PIT":"Pittsburgh Pirates","SD":"San Diego Padres","SF":"San Francisco Giants",
+  "SEA":"Seattle Mariners","STL":"St. Louis Cardinals","TB":"Tampa Bay Rays",
+  "TEX":"Texas Rangers","TOR":"Toronto Blue Jays","WSH":"Washington Nationals",
+};
+function teamLogoUrl(abbrev) {
+  const e = TEAM_ESPN[abbrev];
+  return e ? `https://a.espncdn.com/i/teamlogos/mlb/500/${e}.png` : null;
+}
+
+// ─── KDE heatmap canvas ────────────────────────────────────────────────────
+// Dark background, pitch-color glow: dark → pitch color → brightened peak
+function hexToRgb(hex) {
+  return [
+    parseInt(hex.slice(1,3), 16),
+    parseInt(hex.slice(3,5), 16),
+    parseInt(hex.slice(5,7), 16),
+  ];
+}
+
+function drawHeatmap(canvas, locX, locZ, povPitcher = true, pitchHex = "#4fc3f7") {
+  const W = canvas.width, H = canvas.height;
+  const ctx = canvas.getContext("2d");
+
+  const xMin = -3.3, xMax = 3.3;
+  const zMax = 6.0,  zMin = 0.0;
+
+  const sigFt = 0.19;                            // tight kernel for defined shapes
+  const sigX  = sigFt / (xMax - xMin) * W;
+  const sigZ  = sigFt / (zMax - zMin) * H;
+  const rad   = Math.ceil(Math.max(sigX, sigZ) * 3.5);
+
+  const density = new Float32Array(W * H);
+  if (locX && locX.length > 0) {
+    for (let k = 0; k < locX.length; k++) {
+      const xVal = povPitcher ? -locX[k] : locX[k];
+      const px = (xVal         - xMin) / (xMax - xMin) * W;
+      const pz = (zMax - locZ[k])      / (zMax - zMin) * H;
+      const ix = Math.round(px), iz = Math.round(pz);
+      for (let dy = -rad; dy <= rad; dy++) {
+        const nz = iz + dy; if (nz < 0 || nz >= H) continue;
+        for (let dx = -rad; dx <= rad; dx++) {
+          const nx = ix + dx; if (nx < 0 || nx >= W) continue;
+          density[nz * W + nx] += Math.exp(-0.5 * ((dx/sigX)**2 + (dy/sigZ)**2));
+        }
+      }
+    }
+  }
+
+  let maxD = 0;
+  for (let i = 0; i < density.length; i++) if (density[i] > maxD) maxD = density[i];
+
+  // Ramp: hard threshold for clean edges, then light → pitch color → dark at peak
+  const THRESHOLD = 0.07;  // cut the fuzzy fringe for clean shapes
+  const BG  = [13, 17, 23];
+  const PC  = hexToRgb(pitchHex);
+  const LT  = PC.map(v => Math.round(v * 0.28 + 200 * 0.72));  // light pastel (low usage)
+  const DK  = PC.map(v => Math.round(v * 0.28));                // dark saturated (peak usage)
+
+  const imgData = ctx.createImageData(W, H);
+  for (let i = 0; i < W * H; i++) {
+    imgData.data[i*4]   = BG[0];
+    imgData.data[i*4+1] = BG[1];
+    imgData.data[i*4+2] = BG[2];
+    imgData.data[i*4+3] = 255;
+  }
+
+  if (maxD > 0) {
+    for (let i = 0; i < density.length; i++) {
+      const raw = density[i] / maxD;
+      if (raw < THRESHOLD) continue;
+      // Remap so threshold = 0, max = 1
+      const t = Math.pow((raw - THRESHOLD) / (1 - THRESHOLD), 0.50);
+
+      let r, g, b;
+      if (t < 0.45) {
+        // LT → PC  (light edge → full pitch color)
+        const f = t / 0.45;
+        r = Math.round(LT[0] + f * (PC[0] - LT[0]));
+        g = Math.round(LT[1] + f * (PC[1] - LT[1]));
+        b = Math.round(LT[2] + f * (PC[2] - LT[2]));
+      } else {
+        // PC → DK  (full color → dark at peak)
+        const f = (t - 0.45) / 0.55;
+        r = Math.round(PC[0] + f * (DK[0] - PC[0]));
+        g = Math.round(PC[1] + f * (DK[1] - PC[1]));
+        b = Math.round(PC[2] + f * (DK[2] - PC[2]));
+      }
+      imgData.data[i*4]   = r;
+      imgData.data[i*4+1] = g;
+      imgData.data[i*4+2] = b;
+      imgData.data[i*4+3] = 255;
+    }
+  }
+  ctx.putImageData(imgData, 0, 0);
+
+  // Strike zone — dashed white border
+  const szX1 = (-0.708 - xMin) / (xMax - xMin) * W;
+  const szX2 = ( 0.708 - xMin) / (xMax - xMin) * W;
+  const szY1 = (zMax - 3.5)    / (zMax - zMin) * H;
+  const szY2 = (zMax - 1.5)    / (zMax - zMin) * H;
+  ctx.strokeStyle = "rgba(255,255,255,0.55)";
+  ctx.lineWidth   = 1.2;
+  ctx.setLineDash([4, 3]);
+  ctx.strokeRect(szX1, szY1, szX2 - szX1, szY2 - szY1);
+  ctx.setLineDash([]);
+  // 3×3 inner grid
+  const zW = (szX2 - szX1) / 3, zH = (szY2 - szY1) / 3;
+  ctx.strokeStyle = "rgba(255,255,255,0.12)";
+  ctx.lineWidth = 0.6;
+  for (let ii = 1; ii <= 2; ii++) {
+    const vx = szX1 + zW * ii, hy = szY1 + zH * ii;
+    ctx.beginPath(); ctx.moveTo(vx, szY1); ctx.lineTo(vx, szY2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(szX1, hy); ctx.lineTo(szX2, hy); ctx.stroke();
+  }
+
+  // Home plate (pentagon, bottom center)
+  const hpCX = W / 2, hpY = H - 3;
+  const hpW  = Math.round(W * 0.16), hpH = Math.round(hpW * 0.62);
+  ctx.fillStyle   = "rgba(140, 150, 162, 0.7)";
+  ctx.strokeStyle = "rgba(200, 210, 220, 0.4)";
+  ctx.lineWidth   = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(hpCX - hpW/2, hpY);
+  ctx.lineTo(hpCX + hpW/2, hpY);
+  ctx.lineTo(hpCX + hpW/2, hpY - hpH * 0.55);
+  ctx.lineTo(hpCX,          hpY - hpH);
+  ctx.lineTo(hpCX - hpW/2, hpY - hpH * 0.55);
+  ctx.closePath();
+  ctx.fill(); ctx.stroke();
+
+}
+
+// ─── Usage vs Handedness ──────────────────────────────────────────────────
+function buildUsageChart(pitches, isLHP, compact = false) {
+  const sumL = pitches.reduce((s, p) => s + (p.n_vs_l || 0), 0);
+  const sumR = pitches.reduce((s, p) => s + (p.n_vs_r || 0), 0);
+  const norm = pitches.map(p => ({
+    ...p,
+    usage_pct_vs_l: sumL > 0 ? (p.n_vs_l || 0) / sumL * 100 : 0,
+    usage_pct_vs_r: sumR > 0 ? (p.n_vs_r || 0) / sumR * 100 : 0,
+  }));
+  const maxPct = Math.max(...norm.map(p => Math.max(p.usage_pct_vs_l, p.usage_pct_vs_r)), 1);
+
+  const pad   = compact ? "6px"  : "14px";
+  const fs    = compact ? "10px" : "11px";
+  const barH  = compact ? "7px"  : "9px";
+  const barMW = compact ? "60px" : "80px";
+
+  // Column header row
+  const hdr = `
+  <div style="display:flex;align-items:center;padding:0 0 8px;border-bottom:1px solid #e6e8ec;margin-bottom:0">
+    <div style="width:30px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#98a0ab"></div>
+    <div style="flex:1;text-align:right;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#5f6772;padding-right:${pad}">vs LHB</div>
+    <div style="flex:1;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#5f6772;padding-left:${pad};border-left:1px solid #d7dbe0">vs RHB</div>
+  </div>`;
+
+  const rows = norm.map(p => {
+    const c  = p.color;
+    const wL = (p.usage_pct_vs_l / maxPct * 100).toFixed(1);
+    const wR = (p.usage_pct_vs_r / maxPct * 100).toFixed(1);
+    const pctL = `<span style="font-size:${fs};font-weight:600;font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums;color:${c};white-space:nowrap">${p.usage_pct_vs_l.toFixed(compact?0:1)}%</span>`;
+    const pctR = `<span style="font-size:${fs};font-weight:600;font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums;color:${c};white-space:nowrap">${p.usage_pct_vs_r.toFixed(compact?0:1)}%</span>`;
+    return `
+    <div class="usage-row">
+      <div style="width:30px;font-size:${fs};font-weight:700;font-family:'Inter',sans-serif;color:${c};flex-shrink:0">${p.pitch_type}</div>
+      <div style="flex:1;display:flex;align-items:center;justify-content:flex-end;gap:4px;padding-right:${pad}">
+        ${pctL}
+        <div style="width:${wL}%;max-width:${barMW};height:${barH};background:${c};opacity:0.6;border-radius:2px;flex-shrink:0;min-width:${p.usage_pct_vs_l>0?2:0}px"></div>
+      </div>
+      <div style="flex:1;display:flex;align-items:center;gap:4px;padding-left:${pad};border-left:1px solid #d7dbe0">
+        <div style="width:${wR}%;max-width:${barMW};height:${barH};background:${c};opacity:0.6;border-radius:2px;flex-shrink:0;min-width:${p.usage_pct_vs_r>0?2:0}px"></div>
+        ${pctR}
+      </div>
+    </div>`;
+  }).join("");
+
+  return `
+  <div class="section-label">Usage vs Handedness</div>
+  ${hdr}
+  <div class="usage-rows">${rows}</div>`;
+}
+
+// ─── Movement profile SVG ──────────────────────────────────────────────────
+// rawPitches: optional [{hb, ivb, pt}] array — fetched async, overlaid separately
+function buildMovementPlot(pitches, isLHP, avgAngle, compact = false, gamePk = null) {
+  const SCALE = 7.4;   // px per inch — equal on both axes so break is undistorted
+  const EXT = 25;                          // ±25" of break each way — square/even grid
+  const GEXT = EXT * SCALE;
+  const W = GEXT * 2 + 30, H = GEXT * 2 + 30;  // even 15px margin on all four sides (square)
+  const cx = W / 2, cy = 15 + GEXT;        // grid center; 15px top margin, band reserved at bottom
+  const RINGS = [5, 10, 15, 20, 25];
+  const aSign = isLHP ? -1 : 1;
+
+  let rings = "";   // background: rings, axes, labels
+  let lines = "";   // arm angle lines (drawn before blobs)
+  let blobs = "";   // pitch blobs (drawn on top of lines)
+  let inner = "";
+
+  // ── Cartesian grid: 5" gridlines to ±25" on both axes (square/even) ──
+  const gx0 = cx - GEXT, gx1 = cx + GEXT;
+  const gy0 = cy - GEXT, gy1 = cy + GEXT;
+  RINGS.forEach(r => {                      // 5/10/15/20/25" gridlines, both axes
+    const d = r * SCALE;
+    rings += `<line x1="${cx-d}" y1="${gy0}" x2="${cx-d}" y2="${gy1}" stroke="#dde2e8" stroke-width="1"/>`;
+    rings += `<line x1="${cx+d}" y1="${gy0}" x2="${cx+d}" y2="${gy1}" stroke="#dde2e8" stroke-width="1"/>`;
+    rings += `<line x1="${gx0}" y1="${cy-d}" x2="${gx1}" y2="${cy-d}" stroke="#dde2e8" stroke-width="1"/>`;
+    rings += `<line x1="${gx0}" y1="${cy+d}" x2="${gx1}" y2="${cy+d}" stroke="#dde2e8" stroke-width="1"/>`;
+  });
+  // bounding box
+  rings += `<rect x="${gx0}" y="${gy0}" width="${GEXT*2}" height="${GEXT*2}" fill="none" stroke="#ccd2da" stroke-width="1"/>`;
+  // center crosshair — the main axes, darker so they read clearly
+  rings += `<line x1="${cx}" y1="${gy0}" x2="${cx}" y2="${gy1}" stroke="#a6aeba" stroke-width="1.6"/>`;
+  rings += `<line x1="${gx0}" y1="${cy}" x2="${gx1}" y2="${cy}" stroke="#a6aeba" stroke-width="1.6"/>`;
+  // 5" scale label
+  rings += `<text x="${cx + 5*SCALE + 3}" y="${cy - 3}" fill="#646b75" font-size="8" font-weight="700" font-family="'Inter', sans-serif">5"</text>`;
+
+  // (direction labels removed — grid + 5" scale marker only)
+
+  // Organic blobs — sort largest (most usage) first so they render behind smaller ones
+  const sorted = [...pitches].sort((a, b) => (b.usage_pct || 0) - (a.usage_pct || 0));
+  sorted.forEach(p => {
+    const plotHB = isLHP ? -p.hb : p.hb;
+    const px = cx + plotHB * SCALE;
+    const py = cy - p.ivb  * SCALE;
+    const c     = p.color;
+    const baseR = Math.max(14, Math.min(23, 14 + (p.usage_pct || 0) * 0.38));
+
+    // Deterministic seed from pitch type for reproducible organic shape
+    const seed = p.pitch_type.split('').reduce((s, ch, i) => s + ch.charCodeAt(0) * (i + 3), 7);
+
+    // Build an irregular polygon (16 vertices) with smooth quadratic bezier curves
+    const nPts = 16;
+    const verts = Array.from({length: nPts}, (_, i) => {
+      const angle   = (i / nPts) * 2 * Math.PI - Math.PI / 2;
+      const perturb = 1
+        + Math.sin(seed * 0.17 + i * 2.094) * 0.13
+        + Math.cos(seed * 0.23 + i * 1.570) * 0.07;
+      const r = baseR * Math.max(0.78, Math.min(1.22, perturb));
+      return { x: px + Math.cos(angle) * r, y: py + Math.sin(angle) * r };
+    });
+
+    // Smooth path: quadratic bezier through midpoints between vertices
+    const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+    const start = mid(verts[nPts - 1], verts[0]);
+    let blob = `M${start.x.toFixed(1)},${start.y.toFixed(1)} `;
+    for (let i = 0; i < nPts; i++) {
+      const v = verts[i], m = mid(v, verts[(i + 1) % nPts]);
+      blob += `Q${v.x.toFixed(1)},${v.y.toFixed(1)} ${m.x.toFixed(1)},${m.y.toFixed(1)} `;
+    }
+    blob += 'Z';
+
+    // Light fill + dashed "net" outline
+    blobs += `<path d="${blob}" fill="${c}" fill-opacity="0.10"
+                stroke="${c}" stroke-width="1.4" stroke-dasharray="3.5,2.5" stroke-opacity="0.85"/>`;
+
+    // Two crossing interior dashed threads for net texture
+    const t1 = (seed % 40) * Math.PI / 180;
+    const t2 = t1 + Math.PI / 2;
+    [[t1],[t2]].forEach(([ang]) => {
+      blobs += `<line
+        x1="${(px - Math.cos(ang) * baseR * 1.0).toFixed(1)}"
+        y1="${(py - Math.sin(ang) * baseR * 1.0).toFixed(1)}"
+        x2="${(px + Math.cos(ang) * baseR * 1.0).toFixed(1)}"
+        y2="${(py + Math.sin(ang) * baseR * 1.0).toFixed(1)}"
+        stroke="${c}" stroke-opacity="0.22" stroke-width="0.8" stroke-dasharray="2,2.5"/>`;
+    });
+
+    // Label in pitch color (no white fill since fill is now very light)
+    blobs += `<text x="${px.toFixed(1)}" y="${(py + 4).toFixed(1)}"
+                text-anchor="middle" fill="${c}" fill-opacity="0.95"
+                font-size="${baseR < 17 ? 8 : 9.5}" font-weight="700"
+                font-family="'Inter', sans-serif">${p.pitch_type}</text>`;
+  });
+
+  // ── Arm angle lines from plot origin ─────────────────────────────────────
+  const armLen = 115; // length in viewBox units
+  const fallback = avgAngle ?? 45;
+  // Draw lowest angle first so highest sits on top
+  [...pitches]
+    .sort((a, b) => (a.arm_angle ?? fallback) - (b.arm_angle ?? fallback))
+    .forEach(p => {
+      const rad = (p.arm_angle ?? fallback) * Math.PI / 180;
+      const ex = (cx + aSign * Math.cos(rad) * armLen).toFixed(1);
+      const ey = (cy - Math.sin(rad) * armLen).toFixed(1);
+      lines += `<line x1="${cx}" y1="${cy}" x2="${ex}" y2="${ey}" stroke="${p.color}" stroke-width="2" stroke-linecap="round" opacity="0.75"/>`;
+      lines += `<circle cx="${ex}" cy="${ey}" r="3" fill="${p.color}" opacity="0.85"/>`;
+    });
+  // Center pivot — on top of lines but under blob labels
+  blobs += `<circle cx="${cx}" cy="${cy}" r="3.5" fill="#ccd1d8" stroke="#a8b0ba" stroke-width="1"/>`;
+
+  // Arm angle — inside the grid's bottom-right corner (keeps margins even)
+  if (avgAngle != null) {
+    blobs += `<text x="${gx1 - 7}" y="${gy1 - 15}" text-anchor="end" fill="#5f6772" font-size="7.5" font-weight="700" letter-spacing="1.2" font-family="'Inter',sans-serif">ARM ANGLE</text>`;
+    blobs += `<text x="${gx1 - 7}" y="${gy1 - 4}"  text-anchor="end" fill="#11161d" font-size="11" font-weight="700" letter-spacing="-0.3" font-family="'Inter',sans-serif">${avgAngle.toFixed(1)}°</text>`;
+  }
+
+  const svgW = compact ? "220" : "100%";
+  const svgH = compact ? "220" : "100%";
+  const wrapStyle = compact
+    ? `width:220px;height:220px;flex-shrink:0`
+    : `flex:1;min-height:0;display:flex;align-items:stretch`;
+
+  const editorHref = gamePk != null
+    ? `/editor/${encodeURIComponent(playerName)}/${season}?game_pk=${gamePk}`
+    : `/editor/${encodeURIComponent(playerName)}/${season}`;
+  const editorBtn = `
+    <a href="${editorHref}" style="
+      margin-left:auto;font-size:9px;font-weight:700;letter-spacing:0.9px;
+      color:#2b6fc9;text-decoration:none;text-transform:uppercase;
+      border:1px solid #cde0f6;background:#eff5fc;border-radius:4px;
+      padding:2px 8px;white-space:nowrap;transition:background .15s,color .15s"
+      onmouseenter="this.style.background='#dceafc';this.style.color='#1d5aad'"
+      onmouseleave="this.style.background='#eff5fc';this.style.color='#2b6fc9'">
+      EDITOR →</a>`;
+
+  // Raw-dots toggle — only for non-compact (season/game view)
+  const dotsToggle = compact ? "" : `
+    <label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;
+                  font-size:9px;font-weight:600;color:#5f6772;letter-spacing:0.7px;
+                  margin-left:10px;white-space:nowrap">
+      <input type="checkbox" id="toggle-raw-dots" checked
+        style="accent-color:#2b6fc9;width:11px;height:11px;cursor:pointer"
+        onchange="toggleRawDots(this.checked)">
+      EACH PITCH
+    </label>`;
+
+  return `
+  <div style="display:flex;align-items:center;margin-bottom:6px">
+    <span class="section-label" style="margin-bottom:0">Movement Profile</span>
+    ${dotsToggle}
+    ${editorBtn}
+  </div>
+  <div style="${wrapStyle}">
+    <svg id="movement-svg" viewBox="0 0 ${W} ${H}" width="${svgW}" height="${svgH}" style="display:block;flex:1;min-height:0" xmlns="http://www.w3.org/2000/svg">
+      <rect width="${W}" height="${H}" fill="#e3e7ec" rx="6"/>
+      ${rings}
+      <g id="raw-dots-layer"></g>
+      ${lines}${blobs}
+    </svg>
+  </div>`;
+}
+
+// ─── Raw-pitch dot overlay ─────────────────────────────────────────────────
+// Called after buildMovementPlot injects the SVG into the DOM.
+// rawPitches: [{hb, ivb, pt}] — pfx_x_arm / pfx_z_in in inches.
+let _rawPitchesCache = null;   // cached so re-renders can reuse without re-fetch
+let _rawIsLHP = false;
+let _seasonDots = null;        // season-level dots from player_pitches_raw (no game filter)
+let _inGameView = false;       // true while a specific game is shown
+
+function overlayRawDots(rawPitches, isLHP) {
+  _rawPitchesCache = rawPitches;
+  _rawIsLHP = isLHP;
+  const layer = document.getElementById("raw-dots-layer");
+  if (!layer) return;
+  const cx = 200, cy = 200, SCALE = 7.4;   // must match buildMovementPlot's square grid center
+  let svg = "";
+  rawPitches.forEach(d => {
+    if (d.hb == null || d.ivb == null) return;
+    const plotHB = isLHP ? -d.hb : d.hb;
+    const x = cx + plotHB * SCALE;
+    const y = cy - d.ivb * SCALE;
+    const c = pitchColor(d.pt || "");
+    svg += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.1" fill="${c}" fill-opacity="0.38" stroke="none"/>`;
+  });
+  layer.innerHTML = svg;
+}
+
+function toggleRawDots(show) {
+  const layer = document.getElementById("raw-dots-layer");
+  if (!layer) return;
+  layer.style.display = show ? "" : "none";
+}
+
+// ─── Arm Angle panel ───────────────────────────────────────────────────────
+function buildArmAnglePanel(pitches, avgAngle, isLHP) {
+  const W = 260, H = 190;
+  const cx = W / 2;
+  const cy = H - 14;   // pivot near bottom edge
+  const R  = 130;      // semicircle radius
+  const aSign = isLHP ? -1 : 1;
+
+  let inner = '';
+
+  // Subtle tick marks at 20°, 40°, 60° along the arc
+  [20, 40, 60].forEach(deg => {
+    const rad = deg * Math.PI / 180;
+    const tx1 = (cx + aSign * Math.cos(rad) * (R - 9)).toFixed(1);
+    const ty1 = (cy - Math.sin(rad) * (R - 9)).toFixed(1);
+    const tx2 = (cx + aSign * Math.cos(rad) * R).toFixed(1);
+    const ty2 = (cy - Math.sin(rad) * R).toFixed(1);
+    inner += `<line x1="${tx1}" y1="${ty1}" x2="${tx2}" y2="${ty2}" stroke="#ccd1d8" stroke-width="0.9"/>`;
+  });
+
+  // Background semicircle arc
+  inner += `<path d="M${(cx - R).toFixed(1)},${cy} A${R},${R} 0 0 1 ${(cx + R).toFixed(1)},${cy}" fill="none" stroke="#e6e9ed" stroke-width="1.4"/>`;
+
+  // Horizontal baseline
+  inner += `<line x1="${(cx - R - 6).toFixed(1)}" y1="${cy}" x2="${(cx + R + 6).toFixed(1)}" y2="${cy}" stroke="#ccd1d8" stroke-width="0.8" stroke-dasharray="3 2"/>`;
+
+  // Dotted reference line at average arm angle (behind pitch lines)
+  const avgRad = avgAngle * Math.PI / 180;
+  const avgEx = (cx + aSign * Math.cos(avgRad) * (R + 8)).toFixed(1);
+  const avgEy = (cy - Math.sin(avgRad) * (R + 8)).toFixed(1);
+  inner += `<line x1="${cx}" y1="${cy}" x2="${avgEx}" y2="${avgEy}" stroke="#646b75" stroke-width="1.5" stroke-dasharray="5 3" opacity="0.55"/>`;
+
+  // Per-pitch lines — draw lowest arm angle first (most sidearm behind)
+  [...pitches]
+    .sort((a, b) => (a.arm_angle ?? avgAngle) - (b.arm_angle ?? avgAngle))
+    .forEach(p => {
+      const rad = (p.arm_angle ?? avgAngle) * Math.PI / 180;
+      const ex = (cx + aSign * Math.cos(rad) * R).toFixed(1);
+      const ey = (cy - Math.sin(rad) * R).toFixed(1);
+      inner += `<line x1="${cx}" y1="${cy}" x2="${ex}" y2="${ey}" stroke="${p.color}" stroke-width="3.5" stroke-linecap="round" opacity="0.85"/>`;
+      inner += `<circle cx="${ex}" cy="${ey}" r="5" fill="${p.color}" opacity="0.9"/>`;
+    });
+
+  // Center pivot dot
+  inner += `<circle cx="${cx}" cy="${cy}" r="4" fill="#a8b0ba"/>`;
+
+  const svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="100%" style="display:block" xmlns="http://www.w3.org/2000/svg"><rect width="${W}" height="${H}" fill="#e3e7ec" rx="6"/>${inner}</svg>`;
+
+  return `
+  <div class="section-label">Average Arm Angle</div>
+  <div style="text-align:center;font-size:20px;font-weight:700;letter-spacing:-0.5px;color:var(--text);margin-bottom:8px;flex-shrink:0">${avgAngle.toFixed(1)}°</div>
+  <div style="flex:1;min-height:0;display:flex;align-items:stretch">
+    ${svg}
+  </div>`;
+}
+
+// ─── Stats table ───────────────────────────────────────────────────────────
+function buildTable(pitches, noWrap = false) {
+  const headers = [
+    { l: "Pitch",  a: "left"  },
+    { l: "#",      a: "right" },
+    { l: "Velo",   a: "right" },
+    { l: "iVB",    a: "right" },
+    { l: "HB",     a: "right" },
+    { l: "Spin",   a: "right" },
+    { l: "VAA",    a: "right" },
+    { l: "HAA",    a: "right" },
+    { l: "Ext",    a: "right" },
+    { l: "vREL",   a: "right" },
+    { l: "hREL",   a: "right" },
+    { l: "Zone%",    a: "right" },
+    { l: "SwStr%",   a: "right" },
+    { l: "xwOBA<br>CON", a: "right" },
+    { l: "Stuff+",   a: "right" },
+  ];
+
+  const thead = `<thead><tr>` +
+    headers.map(h => `<th>${h.l}</th>`).join("") +
+    `</tr></thead>`;
+
+  const tbody = `<tbody>` + pitches.map(p => {
+    const c  = p.color;
+    const xw = p.xwoba_contact != null ? p.xwoba_contact.toFixed(3) : "—";
+    return `<tr>
+      <td>
+        <span class="row-color" style="background:${c}"></span>${p.pitch_name}
+      </td>
+      <td>${p.n ?? "—"}</td>
+      <td>${fmtAbs(p.velo, 1)}</td>
+      <td>${fmt(p.ivb)}"</td>
+      <td>${fmt(p.hb)}"</td>
+      <td>${fmtSpin(p.spin)}</td>
+      <td>${fmtAbs(p.vaa, 1)}°</td>
+      <td>${fmtAbs(p.haa, 1)}°</td>
+      <td>${fmtAbs(p.extension, 1)}</td>
+      <td>${p.release_height != null ? p.release_height.toFixed(1) + "'" : "—"}</td>
+      <td>${p.release_side != null ? p.release_side.toFixed(1) + "'" : "—"}</td>
+      ${(z => chipCell(p.zone_pct,  fmtPct(p.zone_pct),  z[0], z[1], z[2], false))(ptBase(p.pitch_type).zone)}
+      ${(w => chipCell(p.whiff_pct, fmtPct(p.whiff_pct), w[0], w[1], w[2], false))(ptBase(p.pitch_type).swstr)}
+      ${chipCell(p.xwoba_contact, xw,                   0.200, 0.340, 0.460, true)}
+      <td class="sp-num" style="color:${stuffColor(p.stuff_plus)};font-weight:700">${p.stuff_plus != null ? Math.round(p.stuff_plus) : "—"}</td>
+    </tr>`;
+  }).join("") + `</tbody>`;
+
+  const tableHtml = `<table>${thead}${tbody}</table>`;
+  if (noWrap) return tableHtml;
+  return `<div class="table-wrap">${tableHtml}</div>`;
+}
+
+// ─── Heatmaps section ─────────────────────────────────────────────────────
+function buildHeatSection(pitches) {
+  function halfGrid(suffix, label) {
+    const items = pitches.map(p => {
+      const c = p.color;
+      return `
+      <div class="heat-item">
+        <div class="heat-abbrev">
+          <span class="ha-pt" style="color:${c}">${p.pitch_type}</span>
+          <span class="ha-name">${p.pitch_name || ""}</span>
+        </div>
+        <canvas class="hc" id="hc-${p.pitch_type}-${suffix}" width="160" height="200"></canvas>
+      </div>`;
+    }).join("");
+    return `
+    <div class="heat-half">
+      <div class="heat-half-label">${label}</div>
+      <div class="heat-grid">${items}</div>
+    </div>`;
+  }
+
+  return `
+  <div class="heat-section">
+    <div class="section-label">Pitch Location — Pitcher's View</div>
+    <div class="heat-splits">
+      ${halfGrid("r", "vs Right-Handed Batters")}
+      ${halfGrid("l", "vs Left-Handed Batters")}
+    </div>
+  </div>`;
+}
+
+// ─── Strike zone scatter (game view) ──────────────────────────────────────
+function buildStrikeZoneScatter(scatter, pitches) {
+  const W = 190, H = 205, ml = 10, mr = 10, mt = 18, mb = 10;
+  const plotW = W - ml - mr, plotH = H - mt - mb;
+  const xRange = 2.0, zMin = 0.7, zMax = 4.6, zRange = zMax - zMin;
+  const cx = ml + plotW / 2;
+  const scaleX = plotW / (2 * xRange), scaleZ = plotH / zRange;
+
+  // Strike zone box (17" wide, roughly 1.5–3.5 ft)
+  const szL = cx - 0.708 * scaleX, szR = cx + 0.708 * scaleX;
+  const szT = mt + (zMax - 3.5) * scaleZ, szB = mt + (zMax - 1.5) * scaleZ;
+  const szW = szR - szL, szH = szB - szT;
+  // Inner thirds grid lines
+  const t1 = szT + szH / 3, t2 = szT + 2 * szH / 3;
+  const l1 = szL + szW / 3, l2 = szL + 2 * szW / 3;
+
+  const ptColors = {};
+  pitches.forEach(p => { ptColors[p.pitch_type] = pitchColor(p.pitch_type); });
+
+  function makeSVG(stand, title) {
+    const pts = scatter.filter(d => d.st === stand);
+    let dots = "";
+    pts.forEach(d => {
+      const c = ptColors[d.pt] || "#646b75";
+      // Pitcher's POV: flip plate_x
+      const svgX = cx - d.x * scaleX;
+      const svgZ = mt + (zMax - d.z) * scaleZ;
+      if (svgX < ml - 4 || svgX > W - mr + 4 || svgZ < mt - 4 || svgZ > H - mb + 4) return;
+      dots += `<circle cx="${svgX.toFixed(1)}" cy="${svgZ.toFixed(1)}" r="3.5" fill="${c}" fill-opacity="0.72" stroke="none"/>`;
+    });
+    const szLf = szL.toFixed(1), szTf = szT.toFixed(1), szWf = szW.toFixed(1), szHf = szH.toFixed(1);
+    return `<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center">
+      <div style="font-size:9px;font-weight:700;color:#5f6772;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:4px">${title}</div>
+      <svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;flex:1" xmlns="http://www.w3.org/2000/svg">
+        <rect x="${ml}" y="${mt}" width="${plotW}" height="${plotH}" fill="#d9dee6" rx="3"/>
+        <rect x="${szLf}" y="${szTf}" width="${szWf}" height="${szHf}" fill="none" stroke="#c0c6ce" stroke-width="1.5"/>
+        <line x1="${szLf}" y1="${t1.toFixed(1)}" x2="${szR.toFixed(1)}" y2="${t1.toFixed(1)}" stroke="#e6e9ed" stroke-width="0.8"/>
+        <line x1="${szLf}" y1="${t2.toFixed(1)}" x2="${szR.toFixed(1)}" y2="${t2.toFixed(1)}" stroke="#e6e9ed" stroke-width="0.8"/>
+        <line x1="${l1.toFixed(1)}" y1="${szTf}" x2="${l1.toFixed(1)}" y2="${szB.toFixed(1)}" stroke="#e6e9ed" stroke-width="0.8"/>
+        <line x1="${l2.toFixed(1)}" y1="${szTf}" x2="${l2.toFixed(1)}" y2="${szB.toFixed(1)}" stroke="#e6e9ed" stroke-width="0.8"/>
+        ${dots}
+      </svg>
+    </div>`;
+  }
+
+  const legend = pitches.map(p =>
+    `<span style="display:inline-flex;align-items:center;gap:4px;margin-right:10px">
+       <span style="width:8px;height:8px;border-radius:50%;background:${pitchColor(p.pitch_type)};display:inline-block;flex-shrink:0"></span>
+       <span style="font-size:9px;color:#646b75">${p.pitch_name}</span>
+     </span>`).join("");
+
+  return `
+    <div class="section-label">Strike Zone — Pitcher's View</div>
+    <div style="display:flex;gap:10px;flex:1;min-height:0">
+      ${makeSVG("L", "vs LHH")}
+      ${makeSVG("R", "vs RHH")}
+    </div>
+    <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:2px">${legend}</div>`;
+}
+
+// ─── Date formatting ───────────────────────────────────────────────────────
+function fmtGameDate(dateStr) {
+  // "2026-03-06" or "2026-03-06 00:00:00" → "Mar 6"
+  if (!dateStr) return "";
+  const datePart = String(dateStr).trim().slice(0, 10);   // drop any time suffix
+  const [y, m, d] = datePart.split("-").map(Number);
+  if (!y || !m || !d) return "";
+  return new Date(y, m - 1, d).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+// ─── Render helpers shared between season + game views ───────────────────
+function renderPage(data, scatter, isGameView, gamePk) {
+  const isLHP     = data.p_throws === "L";
+  const armAngle  = data.arm_angle ?? 45;
+  const teamAbbrev = data.team || "";
+  const season_label = data.season || season;
+
+  data.pitches.forEach(p => { p.color = pitchColor(p.pitch_type); });
+
+  // Header team line
+  let teamLine;
+  if (isGameView) {
+    const d = fmtGameDate(data.game_date);
+    const oppFull = TEAM_NAMES[data.opp_team] || data.opp_team;
+    const oppLogo = teamLogoUrl(data.opp_team);
+    const oppImg  = oppLogo ? `<img src="${oppLogo}" style="height:14px;width:14px;object-fit:contain;vertical-align:middle;margin:0 3px"> ` : "";
+    teamLine = `${teamAbbrev} &nbsp;·&nbsp; ${d} &nbsp;·&nbsp; @ ${oppImg}${oppFull}`;
+  } else {
+    teamLine = [TEAM_NAMES[teamAbbrev] || teamAbbrev, season_label,
+                `${data.total_pitches.toLocaleString()} pitches`].filter(Boolean).join(" · ");
+  }
+  document.getElementById("hdr-team-line").innerHTML = teamLine;
+
+  // Header stats
+  const statsEl = document.getElementById("hdr-stats-row");
+  if (isGameView) {
+    const sp = data.strike_pct != null ? data.strike_pct.toFixed(1) + "%" : "—";
+    const boxes = [
+      ["IP", data.ip_str || "—"], ["P", data.total_pitches ?? "—"], ["H", data.hits ?? "—"], ["ER", data.earned_runs ?? "—"],
+      ["BB", data.walks ?? "—"], ["K", data.strikeouts ?? "—"], ["HR", data.home_runs ?? "—"],
+    ];
+    statsEl.className = "game-stats-grid";
+    statsEl.innerHTML = boxes.map(([lbl, val]) =>
+      `<div class="game-stat-box">
+         <div class="game-stat-box-lbl">${lbl}</div>
+         <div class="game-stat-box-val">${val}</div>
+       </div>`).join("");
+  } else {
+    statsEl.className = "hdr-stats-row";
+    const eraText = data.era != null ? data.era.toFixed(2) : "—";
+    statsEl.innerHTML = `
+      <div class="hdr-stat"><div class="hdr-stat-val">${eraText}</div><div class="hdr-stat-lbl">ERA</div></div>
+      <div class="hdr-stat"><div class="hdr-stat-val">${data.ip_str || "—"}</div><div class="hdr-stat-lbl">IP</div></div>`;
+  }
+
+  // Compact header for game view
+  document.querySelector('header').classList.toggle('header--game', isGameView);
+
+  // Left column panels
+  let leftInner;
+  if (isGameView) {
+    leftInner = `
+      <div class="panel" style="flex:1;min-height:0;overflow:hidden">${buildMovementPlot(data.pitches, isLHP, armAngle, false, gamePk)}</div>
+      <div class="panel" style="flex:1;min-height:0;overflow:hidden">${buildUsageChart(data.pitches, isLHP, true)}</div>`;
+  } else {
+    leftInner = `
+      <div class="panel" style="flex:1;min-height:0">${buildMovementPlot(data.pitches, isLHP, armAngle)}</div>
+      <div class="panel" style="flex:1;min-height:0">${buildUsageChart(data.pitches, isLHP)}</div>`;
+  }
+
+  const arsenalLabel = isGameView
+    ? `Pitch Arsenal — ${fmtGameDate(data.game_date)}`
+    : `Pitch Arsenal`;
+
+  const gridClass = isGameView ? "main-grid game-grid" : "main-grid";
+  let html = `<div class="above-fold"><div class="${gridClass}">`;
+  html += `<div class="left-col">`;
+  html += leftInner;
+  html += `</div>`;
+  if (isGameView) {
+    html += `<div style="display:flex;flex-direction:column;gap:10px;min-height:0">`;
+    html += `<div class="panel zone-panel" style="flex-shrink:0;height:290px">${buildStrikeZoneScatter(scatter || [], data.pitches)}</div>`;
+    html += `<div class="panel" style="flex:1;min-height:0"><div class="section-label" style="margin-bottom:6px">${arsenalLabel}</div>`;
+    html += `<div class="table-scroll" style="overflow:hidden">${buildTable(data.pitches, true)}</div></div>`;
+    html += `</div>`;
+  } else {
+    html += `<div class="panel"><div class="section-label" style="margin-bottom:6px">${arsenalLabel}</div>`;
+    html += `<div class="table-scroll">${buildTable(data.pitches, true)}</div></div>`;
+  }
+  html += `</div></div>`;
+
+  if (!isGameView) {
+    html += buildHeatSection(data.pitches);
+  }
+
+  document.getElementById("main").innerHTML = html;
+
+  requestAnimationFrame(() => {
+    if (!EXPORT) sizeAboveFold();
+    requestAnimationFrame(() => {
+      sizeTableRows();
+      if (!isGameView) {
+        data.pitches.forEach(p => {
+          const cvR = document.getElementById(`hc-${p.pitch_type}-r`);
+          const cvL = document.getElementById(`hc-${p.pitch_type}-l`);
+          if (cvR) drawHeatmap(cvR, p.locations_x_vs_r || [], p.locations_z_vs_r || [], true, p.color);
+          if (cvL) drawHeatmap(cvL, p.locations_x_vs_l || [], p.locations_z_vs_l || [], true, p.color);
+        });
+      }
+      if (EXPORT && !document.getElementById('export-footer')) {
+        document.body.appendChild(_buildExportFooter());
+        window.__exportReady = true;   // headless can watch for this
+      }
+    });
+  });
+}
+
+// ─── Load a specific game ─────────────────────────────────────────────────
+async function loadGame(gamePk) {
+  _inGameView = true;
+  try { history.replaceState(null, "", `?game=${gamePk}`); } catch (e) {}   // persist across refresh/share
+  document.getElementById("main").innerHTML = `<div class="loading">Loading game data…</div>`;
+  const url = `/api/game_detail?player=${encodeURIComponent(playerName)}&season=${encodeURIComponent(season)}&pk=${gamePk}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    document.getElementById("main").innerHTML = `<div class="error">Could not load game data.</div>`;
+    return;
+  }
+  const data = await res.json();
+  renderPage(data, data.scatter, true, gamePk);
+  // Overlay game-specific pitch dots on the movement chart after DOM is ready
+  if (data.movement_dots && data.movement_dots.length) {
+    requestAnimationFrame(() => overlayRawDots(data.movement_dots, data.p_throws === "L"));
+  }
+}
+
+// ─── Main load ────────────────────────────────────────────────────────────
+async function load() {
+  document.title = `${displayName} – Stuff+`;
+  document.getElementById("hdr-name").textContent = displayName;
+
+  // Check for a one-shot preview from the editor (cleared immediately so refresh reverts)
+  let data;
+  const _previewRaw = sessionStorage.getItem("sp_preview");
+  if (_previewRaw) {
+    try {
+      const _prev = JSON.parse(_previewRaw);
+      if (_prev.player_name === playerName && _prev.season === season) {
+        sessionStorage.removeItem("sp_preview");   // clear before any await so refresh = normal
+        const _res = await fetch("/api/reclassify_profile", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(_prev),
+        });
+        if (_res.ok) {
+          data = await _res.json();
+          // Show a dismissable preview banner
+          const _banner = document.createElement("div");
+          _banner.id = "preview-banner";
+          _banner.style.cssText = "background:#2a5caa;color:#fff;padding:8px 16px;font-size:13px;display:flex;justify-content:space-between;align-items:center";
+          _banner.innerHTML = `<span>Preview: showing reclassified grades. Refresh to revert.</span>
+            <button onclick="this.parentElement.remove()" style="background:none;border:1px solid rgba(255,255,255,.5);color:#fff;padding:2px 8px;border-radius:4px;cursor:pointer">✕</button>`;
+          document.body.insertBefore(_banner, document.body.firstChild);
+        }
+      }
+    } catch (_e) { sessionStorage.removeItem("sp_preview"); }
+  }
+
+  if (!data) {
+    const res = await fetch(`/api/player/${encodeURIComponent(playerName)}/${season}`);
+    if (!res.ok) {
+      document.getElementById("main").innerHTML =
+        `<div class="error">No profile found for <strong>${displayName}</strong> (${season}).</div>`;
+      return;
+    }
+    data = await res.json();
+  }
+  const isLHP     = data.p_throws === "L";
+  const handedness = isLHP ? "LHP" : "RHP";
+  const teamAbbrev = data.team || "";
+
+  // Team logo
+  const logoEl  = document.getElementById("hdr-logo");
+  const logoUrl = teamLogoUrl(teamAbbrev);
+  if (logoEl && logoUrl) { logoEl.src = logoUrl; logoEl.alt = teamAbbrev; logoEl.style.display = "block"; }
+
+  // Headshot
+  const pitcherId = data.pitcher_id;
+  if (pitcherId) {
+    const hsEl = document.getElementById("hdr-headshot");
+    hsEl.src = `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${pitcherId}/headshot/67/current`;
+    hsEl.alt = displayName; hsEl.style.display = "block";
+  }
+
+  // Bio line
+  function setBio(height, weight) {
+    const parts = [];
+    if (height) parts.push(height);
+    if (weight) parts.push(`${weight} lbs`);
+    if (data.age) parts.push(`${data.age} yrs`);
+    parts.push(handedness);
+    document.getElementById("hdr-bio").textContent = parts.join(" · ");
+  }
+  setBio(null, null);
+  if (pitcherId) {
+    fetch(`https://statsapi.mlb.com/api/v1/people/${pitcherId}`)
+      .then(r => r.json()).then(d => {
+        const person = d.people && d.people[0];
+        if (person) setBio(person.height || null, person.weight || null);
+      }).catch(() => {});
+  }
+
+  // Render. A reclassify preview that was launched from a GAME view carries the
+  // game line (game_pk + IP/H/ER/…), so render it as a game view — otherwise it
+  // collapses to a season summary and the game's stats are lost.
+  const _isGamePreview = !!(data._preview && data.game_pk != null);
+  if (_isGamePreview) {
+    _inGameView = true;
+    renderPage(data, data.scatter, true, data.game_pk);
+  } else {
+    renderPage(data, null, false);
+  }
+
+  // Overlay individual pitch dots. In a reclassify preview the per-pitch dots come
+  // back on the response already carrying the new labels — use those directly so the
+  // movement chart recolors. Otherwise fetch the season's raw pitches from the DB.
+  if (data._preview && Array.isArray(data.movement_dots)) {
+    // Preview dots are already scoped correctly (game-scoped when the preview came
+    // from a game view), so draw them regardless of _inGameView.
+    _seasonDots = data.movement_dots;
+    requestAnimationFrame(() => {
+      if (data.movement_dots.length) overlayRawDots(data.movement_dots, data.p_throws === "L");
+    });
+  } else {
+    fetch(`/api/player_pitches_raw/${encodeURIComponent(playerName)}/${season}`)
+      .then(r => r.ok ? r.json() : [])
+      .then(raw => {
+        _seasonDots = raw;
+        // Only apply if still in season view — don't clobber game-specific dots
+        if (!_inGameView && raw.length) overlayRawDots(raw, data.p_throws === "L");
+      })
+      .catch(() => {});
+  }
+
+  // Game dropdown — only for live seasons (spring2026, 2026, aaa2026, acl2026, fsl2026, breakout2026)
+  const isLiveSeason = season === "spring2026" || season === "breakout2026" || season === "2026" || season === "aaa2026" || season === "acl2026" || season === "fsl2026" || season === "futures2026" || season === "springall2026";
+  if (isLiveSeason) {
+    const wrapEl   = document.getElementById("hdr-game-select-wrap");
+    const selectEl = document.getElementById("hdr-game-select");
+    wrapEl.style.display = "block";
+
+    // Fetch game log in background
+    fetch(`/api/games/${encodeURIComponent(playerName)}/${season}`)
+      .then(r => r.json())
+      .then(games => {
+        const opts = [`<option value="">Season Summary</option>`];
+        games.forEach(g => {
+          const d   = fmtGameDate(g.game_date);
+          const opp = g.opp_team || "?";
+          opts.push(`<option value="${g.game_pk}">${d} vs ${opp}</option>`);
+        });
+        selectEl.innerHTML = opts.join("");
+        // Sync the dropdown to the current game + restore a game view from the URL (?game=pk)
+        // or an editor game-preview, so a refresh/share stays on the game summary.
+        const _urlGame = new URLSearchParams(location.search).get("game");
+        const _curGame = (_isGamePreview && data.game_pk != null) ? String(data.game_pk) : _urlGame;
+        if (_curGame && [...selectEl.options].some(o => o.value === _curGame)) {
+          selectEl.value = _curGame;
+          if (!_inGameView) loadGame(parseInt(_curGame));
+        }
+        selectEl.addEventListener("change", () => {
+          const pk = selectEl.value;
+          if (!pk) {
+            _inGameView = false;
+            try { history.replaceState(null, "", location.pathname); } catch (e) {}  // back to season URL
+            renderPage(data, null, false);
+            // Re-overlay season dots after renderPage rebuilds the SVG
+            requestAnimationFrame(() => {
+              if (_seasonDots && _seasonDots.length) overlayRawDots(_seasonDots, _rawIsLHP);
+            });
+          } else {
+            loadGame(parseInt(pk));
+          }
+        });
+      })
+      .catch(() => {});
+  }
+}
+
+// ─── Table row auto-fill ──────────────────────────────────────────────────
+let _tableRowRO = null;
+let _tableRowROTarget = null;
+function sizeTableRows() {
+  const tableScroll = document.querySelector('.table-scroll');
+  const tbl = tableScroll?.querySelector('table');
+  if (!tableScroll || !tbl) return;
+  const avail  = tableScroll.offsetHeight;
+  const theadH = tbl.querySelector('thead')?.offsetHeight || 0;
+  const rows   = tbl.querySelectorAll('tbody tr');
+  if (rows.length > 0 && avail > 0) {
+    const rowH = Math.max(28, Math.floor((avail - theadH) / rows.length));
+    const extra = avail - theadH - rowH * rows.length;
+    rows.forEach((tr, i) => { tr.style.height = (rowH + (i < extra ? 1 : 0)) + 'px'; });
+  }
+  // Attach ResizeObserver once per element so future container resizes re-run sizing
+  if (_tableRowROTarget !== tableScroll) {
+    if (_tableRowRO) _tableRowRO.disconnect();
+    _tableRowRO = new ResizeObserver(() => { requestAnimationFrame(sizeTableRows); });
+    _tableRowRO.observe(tableScroll);
+    _tableRowROTarget = tableScroll;
+  }
+}
+
+// ─── Dynamic above-fold sizing ────────────────────────────────────────────
+function sizeAboveFold() {
+  if (window.innerWidth <= 600) return;
+  const hdr  = document.querySelector('header');
+  const main = document.querySelector('main');
+  const af   = document.querySelector('.above-fold');
+  if (!af || !hdr || !main) return;
+  const pt = parseFloat(getComputedStyle(main).paddingTop)    || 0;
+  const pb = parseFloat(getComputedStyle(main).paddingBottom) || 0;
+  af.style.height = Math.max(280, window.innerHeight - hdr.offsetHeight - pt - pb) + 'px';
+}
+window.addEventListener('resize', sizeAboveFold);
+
+load();
+</script>
+
+<!-- PNG export is rendered server-side by headless Chrome (see /export_png). -->
+<script>
+function _buildExportFooter() {
+  const f = document.createElement('div');
+  f.id = 'export-footer';
+  f.innerHTML =
+    '<div class="ef-note">' +
+      '<b>Stuff+</b>: 100 = league average; every 10 points = one standard deviation ' +
+      '(120 is elite, 80 is well below average).<br>' +
+      'Data: MLB / Baseball Savant.' +
+    '</div>' +
+    '<div class="ef-mark">@akanemvp on X</div>';
+  return f;
+}
+
+// Server-side export: headless Chrome renders this exact page and screenshots it.
+// Works in every browser (Safari included) with no canvas-taint problem.
+async function serverExportPNG() {
+  const btn = document.getElementById('dl-png');
+  const oldLabel = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Rendering…';
+  try {
+    let url = '/export_png?name=' + encodeURIComponent(playerName) + '&season=' + encodeURIComponent(season);
+    const wrap = document.getElementById('hdr-game-select-wrap');
+    const sel  = document.getElementById('hdr-game-select');
+    let suffix = season;
+    if (wrap && wrap.style.display !== 'none' && sel && sel.value) {
+      url += '&game=' + encodeURIComponent(sel.value);
+      const txt = (sel.options[sel.selectedIndex]?.textContent || '').trim();
+      const m = txt.match(/\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}/);
+      suffix += '_' + (m ? m[0].replace(/\//g, '-') : 'game');
+    }
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('server returned ' + r.status);
+    const blob = await r.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${displayName.replace(/[^\w]+/g, '_')}_${suffix}.png`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  } catch (err) {
+    console.error('PNG export failed:', err);
+    alert('Could not generate PNG: ' + err.message);
+  } finally {
+    btn.disabled = false; btn.textContent = oldLabel;
+  }
+}
+
+</script>
+</body>
+</html>
