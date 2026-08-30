@@ -2163,7 +2163,8 @@ def export_png():
         subprocess.run(
             [_CHROME_BIN, "--headless", "--disable-gpu", "--hide-scrollbars", "--no-sandbox",
              "--force-device-scale-factor=2", f"--screenshot={tmp}",
-             "--window-size=1460,3200", "--virtual-time-budget=8000", url],
+             # game exports chain an extra fetch (season -> game), so allow more render time
+             "--window-size=1460,3200", "--virtual-time-budget=13000", url],
             capture_output=True, timeout=90,
         )
         if not _os.path.exists(tmp):

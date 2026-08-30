@@ -57,8 +57,7 @@
     body.export .hdr-back { display: none !important; }
     body.export main { min-height: 0 !important; overflow: visible !important; }   /* no viewport-tall gap */
     body.export .above-fold { height: auto !important; max-height: none !important; }  /* natural height */
-    body.export .heat-section,                       /* drop pitch locations from the export */
-    body.export .zone-panel { display: none !important; }
+    body.export .heat-section { display: none !important; }   /* drop the season location heatmap; keep the game strike-zone panel */
 
     /* ─── Header ─────────────────────────────────── */
     header {
@@ -1450,6 +1449,14 @@ async function load() {
     renderPage(data, data.scatter, true, data.game_pk);
   } else {
     renderPage(data, null, false);
+  }
+
+  // PNG export of a GAME summary: load the game view directly & early (don't wait on the
+  // game-log fetch below) so the headless screenshot captures the game, not the season.
+  // loadGame sets _inGameView, so the dropdown-restore further down won't re-fire it.
+  if (EXPORT && !_isGamePreview) {
+    const _eg = new URLSearchParams(location.search).get("game");
+    if (_eg) loadGame(parseInt(_eg));
   }
 
   // Overlay individual pitch dots. In a reclassify preview the per-pitch dots come
