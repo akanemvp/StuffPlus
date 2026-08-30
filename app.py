@@ -2551,6 +2551,9 @@ def api_game_detail():
     from profiles.player_cards import summarize_pitcher, stuff_grade, _nan_to_none
     from config import PITCH_TYPES
 
+    # Backfill xwOBA from EV+LA (MLB-calibrated, level-agnostic) so xwOBAcon shows live for
+    # /gf + minor-league (AAA/etc.) games whose stored rows have no Statcast xwOBA yet.
+    df = _apply_xwoba(df)
     game_stats = _compute_game_stats(df)
     summary    = summarize_pitcher(df)
 
