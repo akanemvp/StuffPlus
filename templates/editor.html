@@ -445,7 +445,7 @@ const displayName = toDisplay(playerName);
 
 document.getElementById("hdr-name").textContent = displayName;
 document.getElementById("hdr-season").textContent = gamePk ? `${season} · Game ${gamePk}` : season;
-document.getElementById("back-link").href = `/player/${encodeURIComponent(playerName)}/${season}`;
+document.getElementById("back-link").href = `/player/${encodeURIComponent(playerName)}/${season}` + (gamePk != null ? `?game=${gamePk}` : "");
 document.title = `${displayName} – Pitch Editor${gamePk ? ` (Game ${gamePk})` : ""}`;
 
 // ─── Pitch colours ────────────────────────────────────────────────────────────
@@ -1008,7 +1008,7 @@ function viewInProfile() {
     game_pk:         gamePk,
     pitch_overrides: appliedOvr,
   }));
-  window.location.href = `/player/${encodeURIComponent(playerName)}/${season}`;
+  window.location.href = `/player/${encodeURIComponent(playerName)}/${season}` + (gamePk != null ? `?game=${gamePk}` : "");
 }
 
 function renderResults(pitches) {
