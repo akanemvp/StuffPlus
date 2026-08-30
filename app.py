@@ -3382,6 +3382,10 @@ def api_reclassify():
         logger.warning(f"reclassify predict error: {exc}")
         return jsonify({"error": f"model error: {exc}"}), 500
 
+    # Backfill xwOBA from EV+LA for live /gf games (no Statcast xwOBA yet), exactly like the
+    # game view does — otherwise xwOBAcon vanishes after a relabel on those games.
+    df_scored = _apply_xwoba(df_scored)
+
     # Build per-type result rows. Use summarize_pitcher so xwOBAcon / zone% / whiff% /
     # velo / Command+ recalculate too (not just Stuff+) after a relabel.
     from profiles.player_cards import summarize_pitcher as _summ, _nan_to_none as _n2n
@@ -3491,6 +3495,7 @@ def api_reclassify_profile():
     # Rescore
     try:
         df_scored = _get_predictor().predict(df)
+        df_scored = _apply_xwoba(df_scored)   # backfill xwOBA (EV+LA) for /gf games, like the game view
     except Exception as exc:
         return jsonify({"error": f"model error: {exc}"}), 500
 
