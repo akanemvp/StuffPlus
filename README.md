@@ -22,6 +22,6 @@ python main.py live       # start the live in-season update loop
 | `model/predict.py` | inference — loads the model, turns pitches into grades |
 | `features/engineering.py` | shape-feature engineering + induced (Magnus) components |
 | `main.py` | CLI: `train` / `score` / `profiles` / `live` |
-| `app.py` | Flask web app (leaderboards, pitcher cards, editor) |
-| `profiles/` | pitcher-card and leaderboard builders |
+| `app.py` | Flask web app |
+| `profiles/` | pitcher-cards |
 | `scraper/`, `live/` | data ingestion and the live update loop |
